@@ -23,7 +23,11 @@ for (const [destino, origen] of Object.entries(MAPA)) {
         process.exit(1);
     }
     fs.rmSync(hasta, { recursive: true, force: true });
-    fs.cpSync(desde, hasta, { recursive: true });
+    // No se copian los idiomas de Select2 ni los mapas de depuración (la app no los usa; aligera el paquete)
+    fs.cpSync(desde, hasta, {
+        recursive: true,
+        filter: (origen) => !/[\\/]i18n([\\/]|$)/.test(origen) && !origen.endsWith('.map')
+    });
     copiados++;
 }
 console.log(`Librerías copiadas a public/vendor (${copiados})`);
