@@ -18,7 +18,7 @@ function buildVentasWhere(queryParams) {
     }
 
     if (queryParams.q) {
-        where.push('(c.nombre LIKE ? OR f.id LIKE ?)');
+        where.push('(c.nombre ILIKE ? OR CAST(f.id AS TEXT) LIKE ?)');
         const term = `%${queryParams.q}%`;
         params.push(term, term);
     }
@@ -135,13 +135,13 @@ async function getProductosMasVendidos(queryParams) {
 async function getDiasMasMovimiento(queryParams) {
     const { whereSql, params } = buildVentasWhere(queryParams);
     const sql = `
-        SELECT DAYOFWEEK(f.fecha) AS dia_num,
+        SELECT (EXTRACT(DOW FROM f.fecha)::int + 1) AS dia_num,
                COUNT(*)            AS num_ventas,
                SUM(f.total)        AS total_ventas
         FROM facturas f
         JOIN clientes c ON f.cliente_id = c.id
         ${whereSql}
-        GROUP BY DAYOFWEEK(f.fecha)
+        GROUP BY 1
         ORDER BY dia_num
     `;
     try {
@@ -157,13 +157,13 @@ async function getDiasMasMovimiento(queryParams) {
 async function getHorasPico(queryParams) {
     const { whereSql, params } = buildVentasWhere(queryParams);
     const sql = `
-        SELECT HOUR(f.fecha) AS hora,
+        SELECT EXTRACT(HOUR FROM f.fecha)::int AS hora,
                COUNT(*)       AS num_ventas,
                SUM(f.total)   AS total_ventas
         FROM facturas f
         JOIN clientes c ON f.cliente_id = c.id
         ${whereSql}
-        GROUP BY HOUR(f.fecha)
+        GROUP BY 1
         ORDER BY hora
     `;
     try {
@@ -336,8 +336,7 @@ router.get('/export', async (req, res) => {
                 FROM factura_pagos fp
                 JOIN facturas f ON f.id = fp.factura_id
                 JOIN clientes c ON f.cliente_id = c.id
-                ${whereSql}
-                WHERE fp.metodo IN ('efectivo','transferencia','tarjeta','qr')
+                ${whereSql ? whereSql + ' AND' : 'WHERE'} fp.metodo IN ('efectivo','transferencia','tarjeta','qr')
                 GROUP BY fp.metodo
             `;
             const [txRows] = await db.query(sqlTx, params);

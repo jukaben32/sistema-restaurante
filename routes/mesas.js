@@ -1202,7 +1202,7 @@ router.put('/pedidos/:pedidoId/mover', async (req, res) => {
                 [pedido.mesa_id]
             );
             if ((restantesOrigen[0]?.cnt || 0) === 0) {
-                await connection.query('UPDATE mesas SET estado = "libre" WHERE id = ?', [pedido.mesa_id]);
+                await connection.query(`UPDATE mesas SET estado = 'libre' WHERE id = ?`, [pedido.mesa_id]);
             }
 
             // Recalcular estado de ambas mesas según items activos reales.

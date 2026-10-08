@@ -20,3 +20,7 @@ Thumbs.db
 .idea/
 .vscode/
 
+
+# Secretos y entorno
+.env
+!.env.example

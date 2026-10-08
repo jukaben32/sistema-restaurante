@@ -25,7 +25,7 @@ router.get('/buscar', async (req, res) => {
         const query = req.query.q || '';
         const sql = `
             SELECT * FROM productos 
-            WHERE nombre LIKE ? OR codigo LIKE ?
+            WHERE nombre ILIKE ? OR codigo ILIKE ?
             ORDER BY nombre
             LIMIT 10
         `;
@@ -87,7 +87,7 @@ router.post('/:padreId(\\d+)/hijos', async (req, res) => {
 
         // Insert idempotente (si ya existe, no rompe)
         await db.query(
-            'INSERT IGNORE INTO producto_hijos (producto_padre_id, producto_hijo_id) VALUES (?, ?)',
+            'INSERT INTO producto_hijos (producto_padre_id, producto_hijo_id) VALUES (?, ?) ON CONFLICT DO NOTHING',
             [padreId, hijoId]
         );
 
@@ -167,11 +167,11 @@ router.post('/:padreId(\\d+)/hijos-items', async (req, res) => {
         if (!padre) return res.status(404).json({ error: 'Producto padre no encontrado' });
 
         const [result] = await db.query(
-            'INSERT IGNORE INTO producto_hijos_items (producto_padre_id, nombre, orden) VALUES (?, ?, ?)',
+            'INSERT INTO producto_hijos_items (producto_padre_id, nombre, orden) VALUES (?, ?, ?) ON CONFLICT DO NOTHING',
             [padreId, nombre, Number.isFinite(orden) ? orden : 0]
         );
 
-        // Nota: INSERT IGNORE no informa duplicado; devolvemos 201 igual (idempotente)
+        // Nota: ON CONFLICT DO NOTHING no informa duplicado; devolvemos 201 igual (idempotente)
         res.status(201).json({ id: result?.insertId || null, message: 'Item hijo agregado' });
     } catch (error) {
         console.error('Error al agregar hijo-item al producto:', error);
@@ -375,7 +375,7 @@ router.post('/importar', upload.single('archivo'), async (req, res) => {
             await connection.beginTransaction();
             for (const p of rows) {
                 await connection.query(
-                    'INSERT INTO productos (codigo, nombre, precio_kg, precio_unidad, precio_libra) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE nombre=VALUES(nombre), precio_kg=VALUES(precio_kg), precio_unidad=VALUES(precio_unidad), precio_libra=VALUES(precio_libra)',
+                    'INSERT INTO productos (codigo, nombre, precio_kg, precio_unidad, precio_libra) VALUES (?,?,?,?,?) ON CONFLICT (codigo) DO UPDATE SET nombre=EXCLUDED.nombre, precio_kg=EXCLUDED.precio_kg, precio_unidad=EXCLUDED.precio_unidad, precio_libra=EXCLUDED.precio_libra',
                     [p.codigo, p.nombre, p.precio_kg, p.precio_unidad, p.precio_libra]
                 );
             }

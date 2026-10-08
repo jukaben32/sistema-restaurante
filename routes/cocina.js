@@ -175,12 +175,12 @@ router.put('/mesa/:mesaId/preparar', requireRole(['cocinero', 'administrador']),
         }
 
         // Actualiza todos los items "enviado" asociados a pedidos de la mesa.
-        // Usamos JOIN para evitar tener que traer ids al backend en dos pasos.
+        // Usamos UPDATE ... FROM para evitar tener que traer ids al backend en dos pasos.
         const [result] = await db.query(
             `UPDATE pedido_items i
-             JOIN pedidos p ON p.id = i.pedido_id
-             SET i.estado = 'preparando', i.preparado_at = NOW()
-             WHERE p.mesa_id = ? AND i.estado = 'enviado'`,
+             SET estado = 'preparando', preparado_at = NOW()
+             FROM pedidos p
+             WHERE p.id = i.pedido_id AND p.mesa_id = ? AND i.estado = 'enviado'`,
             [mesaId]
         );
 

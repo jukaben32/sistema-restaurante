@@ -24,7 +24,7 @@ router.get('/buscar', async (req, res) => {
         const query = req.query.q || '';
         const sql = `
             SELECT * FROM clientes 
-            WHERE nombre LIKE ? OR telefono LIKE ?
+            WHERE nombre ILIKE ? OR telefono ILIKE ?
             ORDER BY nombre
             LIMIT 10
         `;
@@ -88,7 +88,7 @@ router.put('/:id', async (req, res) => {
             return res.status(400).json({ error: 'El nombre es requerido' });
         }
 
-        const result = await db.query(
+        const [result] = await db.query(
             'UPDATE clientes SET nombre = ?, direccion = ?, telefono = ? WHERE id = ?',
             [nombre, direccion || null, telefono || null, req.params.id]
         );
@@ -107,7 +107,7 @@ router.put('/:id', async (req, res) => {
 // DELETE /clientes/:id - Eliminar cliente
 router.delete('/:id', async (req, res) => {
     try {
-        const result = await db.query('DELETE FROM clientes WHERE id = ?', [req.params.id]);
+        const [result] = await db.query('DELETE FROM clientes WHERE id = ?', [req.params.id]);
         
         if (result.affectedRows === 0) {
             return res.status(404).json({ error: 'Cliente no encontrado' });
