@@ -52,6 +52,9 @@ async function esperarServidor() {
 }
 
 (async () => {
+    // Antes de nada: la app debe cargar como en Vercel (sin require de módulos ESM)
+if (spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'check-cjs.js')], { stdio: 'inherit' }).status !== 0) process.exit(1);
+
     console.log('Vaciando la base de pruebas…');
     await vaciarBase();
     const servidor = spawn(process.execPath, ['server.js'], { cwd: ROOT, env: { ...process.env, ...ENTORNO_SIMULADO }, stdio: 'ignore' });
