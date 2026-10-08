@@ -10,13 +10,22 @@ const { ErrorPublico } = require('./errores');
 
 // Ids de los mensajes que envió el sistema: cuando Evolution avisa de un mensaje "fromMe" que NO está aquí,
 // lo escribió una persona desde el teléfono del restaurante (el bot se pausa en esa conversación).
-const idsEnviados = new Set();
-function registrarEnviado(id) {
+// Se guardan en la base de datos (tabla wa_ids): en serverless el aviso puede llegar a otra instancia.
+async function registrarEnviado(id) {
     if (!id) return;
-    idsEnviados.add(id);
-    if (idsEnviados.size > 1000) idsEnviados.delete(idsEnviados.values().next().value);
+    await db.query(`INSERT INTO wa_ids (id, tipo) VALUES (?, 'enviado') ON CONFLICT DO NOTHING`, [String(id)]);
 }
-function fueEnviadoPorSistema(id) { return idsEnviados.has(id); }
+async function fueEnviadoPorSistema(id) {
+    if (!id) return false;
+    const [rows] = await db.query(`SELECT 1 FROM wa_ids WHERE id = ? AND tipo = 'enviado'`, [String(id)]);
+    return rows.length > 0;
+}
+/** true si es la primera vez que vemos este mensaje (evita responder dos veces si Evolution reintenta). */
+async function marcarVisto(id) {
+    if (!id) return true;
+    const [r] = await db.query(`INSERT INTO wa_ids (id, tipo) VALUES (?, 'visto') ON CONFLICT DO NOTHING`, [String(id)]);
+    return r.affectedRows > 0;
+}
 
 async function leerFila() {
     const [rows] = await db.query('SELECT * FROM agentes_config WHERE id = 1');
@@ -114,7 +123,7 @@ async function enviarTexto(destino, texto) {
         const numero = String(destino).includes('@') ? String(destino) : normalizar(destino);
         if (!numero || !String(texto || '').trim()) return false;
         const r = await evolution.enviarTexto(c.instancia, c.token, numero, String(texto));
-        registrarEnviado(r && r.key && r.key.id);
+        await registrarEnviado(r && r.key && r.key.id);
         return true;
     } catch (e) {
         console.error('No se pudo enviar el WhatsApp:', e.message);
@@ -122,4 +131,4 @@ async function enviarTexto(destino, texto) {
     }
 }
 
-module.exports = { conexion, crearInstancia, estado, desconectar, secretoValido, actualizarEstado, enviarTexto, leerFila, fueEnviadoPorSistema };
+module.exports = { conexion, crearInstancia, estado, desconectar, secretoValido, actualizarEstado, enviarTexto, leerFila, fueEnviadoPorSistema, marcarVisto };

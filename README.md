@@ -47,7 +47,7 @@ Para usarla desde otros equipos de la red local, abre el puerto 3000 en el firew
 | **Conversaciones**: llamadas y chats, tomar el control, responder por WhatsApp | `/conversaciones` | Mesero / Admin |
 | **Datos para los asistentes**: horario, zonas, FAQ, transferencia | Configuración → Delivery y agentes | Admin |
 
-Los pedidos y reservas que toman los asistentes entran **por confirmar**: el personal los revisa antes de pasar a cocina. Vapi y WhatsApp necesitan que la app esté en internet con HTTPS: ver [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md).
+Los pedidos y reservas que toman los asistentes entran **por confirmar**: el personal los revisa antes de pasar a cocina. Vapi y WhatsApp necesitan que la app esté en internet con HTTPS. Dos formas de publicarla: en un servidor propio con Docker/Dokploy ([docs/DESPLIEGUE.md](docs/DESPLIEGUE.md)) o en Vercel ([docs/DESPLIEGUE-VERCEL.md](docs/DESPLIEGUE-VERCEL.md), con algunas limitaciones; Evolution API siempre va en un servidor aparte).
 
 ### Configurar Stripe
 1. En [dashboard.stripe.com](https://dashboard.stripe.com) → Developers → API keys, copia la llave secreta (`sk_test_…` para pruebas).

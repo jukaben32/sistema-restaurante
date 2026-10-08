@@ -7,6 +7,7 @@ const db = require('../db');
 const delivery = require('../services/delivery');
 const clientesService = require('../services/clientes');
 const avisos = require('../services/agente/avisos');
+const { enSegundoPlano } = require('../services/segundoPlano');
 
 const router = express.Router();
 
@@ -87,7 +88,7 @@ const accion = (nombre, fn, msg, despues) => router.post(`/api/delivery/:id(\\d+
     try {
         const out = await fn(req);
         res.json({ ok: true, ...out });
-        if (despues) Promise.resolve(despues(Number(req.params.id), out)).catch(() => {});
+        if (despues) enSegundoPlano(despues(Number(req.params.id), out));
     } catch (e) { responderError(res, e, msg); }
 });
 

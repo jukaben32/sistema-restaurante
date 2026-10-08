@@ -31,7 +31,10 @@ if (!process.env.DATABASE_URL) {
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: String(process.env.DB_SSL || '').toLowerCase() === 'false' ? false : { rejectUnauthorized: false },
-    max: 10
+    // En Vercel (serverless) cada instancia abre pocas conexiones y las suelta pronto; en un servidor, 10.
+    // Ajustable con DB_POOL_MAX. Usa el Session pooler de Supabase (puerto 5432).
+    max: Number(process.env.DB_POOL_MAX || (process.env.VERCEL ? 4 : 10)),
+    idleTimeoutMillis: process.env.VERCEL ? 8000 : 30000
 });
 
 // Fija la zona horaria una sola vez por conexión física (NOW()/DATE() en hora local del restaurante).
@@ -62,7 +65,7 @@ pool.on('error', (err) => {
 });
 
 // Tablas sin columna "id" (no se les agrega RETURNING id en INSERT)
-const TABLES_WITHOUT_ID = new Set(['producto_hijos', 'recetas', 'producto_imagenes', 'horarios', 'vapi_tools']);
+const TABLES_WITHOUT_ID = new Set(['producto_hijos', 'recetas', 'producto_imagenes', 'horarios', 'vapi_tools', 'wa_ids', 'candados']);
 
 /**
  * Traduce una sentencia con placeholders "?" (estilo mysql2) a "$n" de PostgreSQL.
@@ -198,9 +201,11 @@ async function ensureSchema() {
         const sql = fs.readFileSync(path.join(__dirname, 'database.sql'), 'utf8');
         await pool.query(sql);
         console.log('Esquema de base de datos verificado');
+        return true;
     } catch (err) {
         // No bloqueamos el arranque si falla el "auto-migrate", pero lo dejamos en consola.
         console.error('ensureSchema() falló:', err.message);
+        return false;
     }
 }
 

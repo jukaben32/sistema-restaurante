@@ -24,15 +24,19 @@
   "scripts": {
     "start": "node server.js",
     "vapi:sync": "node scripts/vapi-sync.js",
+    "db:init": "node scripts/init-db.js",
+    "vercel-build": "node scripts/copy-vendor.js && node scripts/init-db.js",
     "test:e2e": "node tests/e2e/run.js",
     "dev": "nodemon server.js",
     "build": "pkg . --public --target node18-win-x64"
   },
   "dependencies": {
+    "@vercel/functions": "^3.9.11",
     "bcryptjs": "^3.0.2",
     "body-parser": "^1.20.2",
     "bootstrap": "^5.3.3",
     "bootstrap-icons": "^1.11.3",
+    "connect-pg-simple": "^10.0.0",
     "dotenv": "^16.6.1",
     "ejs": "^3.1.9",
     "exceljs": "^4.4.0",

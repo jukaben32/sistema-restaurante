@@ -1,46 +1,20 @@
 // Webhook público de WhatsApp (Evolution API): POST /api/whatsapp/webhook/:secreto
 // Evolution no firma sus webhooks, así que el secreto aleatorio de la URL (guardado cifrado) es la
 // barrera de confianza. Se responde 200 de inmediato y el mensaje se procesa en segundo plano
-// (así Evolution no reintenta y no se duplican respuestas).
+// (así Evolution no reintenta y no se duplican respuestas). En Vercel el trabajo sigue con waitUntil.
+// Todo el estado vive en la base de datos (ids vistos/enviados, ritmo, candado por cliente) para que
+// funcione igual con varias instancias o en serverless.
 // Patrón de Real-Estate-Multi-AI-Agent-SaaS/src/app/api/whatsapp/webhook/[businessId]/route.ts.
-// Relacionado con: services/whatsapp.js, services/agente/texto.js, routes/conversaciones.js
+// Relacionado con: services/whatsapp.js, services/agente/texto.js, services/segundoPlano.js, routes/conversaciones.js
 const express = require('express');
 const db = require('../db');
 const wa = require('../services/whatsapp');
 const texto = require('../services/agente/texto');
 const conversaciones = require('../services/agente/conversaciones');
+const { enSegundoPlano, conCandado } = require('../services/segundoPlano');
 const { normalizar, ultimos10 } = require('../services/telefono');
 
 const router = express.Router();
-
-const vistos = new Set();
-function yaVisto(id) {
-    if (!id) return false;
-    if (vistos.has(id)) return true;
-    vistos.add(id);
-    if (vistos.size > 2000) vistos.delete(vistos.values().next().value);
-    return false;
-}
-
-// Un cliente a la vez: los mensajes de un mismo número se procesan en orden
-const colas = new Map();
-function enCola(clave, fn) {
-    const previa = colas.get(clave) || Promise.resolve();
-    const siguiente = previa.then(fn, fn).finally(() => { if (colas.get(clave) === siguiente) colas.delete(clave); });
-    colas.set(clave, siguiente);
-    return siguiente;
-}
-
-// Freno anti-bucle / abuso: más de 25 mensajes en 10 minutos de un mismo número se ignoran
-const ritmo = new Map();
-function demasiados(tel) {
-    const ahora = Date.now();
-    const lista = (ritmo.get(tel) || []).filter((t) => ahora - t < 600000);
-    lista.push(ahora);
-    ritmo.set(tel, lista);
-    if (ritmo.size > 5000) ritmo.clear();
-    return lista.length > 25;
-}
 
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 // Pausa "humana" antes de responder: una respuesta instantánea es señal fácil de automatización
@@ -48,6 +22,16 @@ function pausa() {
     const min = Number(process.env.WA_PAUSA_MIN_MS ?? 2000);
     const max = Number(process.env.WA_PAUSA_MAX_MS ?? 5000);
     return max <= 0 ? 0 : min + Math.random() * Math.max(0, max - min);
+}
+
+/** Freno anti-bucle / abuso: más de 25 mensajes en 10 minutos de un mismo número se ignoran. */
+async function demasiados(tel) {
+    const [r] = await db.query(
+        `SELECT COUNT(*) AS n FROM agente_mensajes m JOIN agente_conversaciones c ON c.id = m.conversacion_id
+         WHERE c.canal = 'whatsapp' AND c.telefono = ? AND m.rol = 'cliente' AND m.created_at > NOW() - interval '10 minutes'`,
+        [tel]
+    );
+    return Number(r[0].n) >= 25;
 }
 
 function extraerTexto(data) {
@@ -118,7 +102,7 @@ async function procesarMensaje(data, ctxBase) {
     // Mensaje escrito por una persona desde el teléfono del restaurante: el bot cede la conversación
     if (key.fromMe) {
         await dormir(1500); // da tiempo a que registremos los ids de lo que envió el sistema
-        if (wa.fueEnviadoPorSistema(id)) return;
+        if (await wa.fueEnviadoPorSistema(id)) return;
         const t = extraerTexto(data);
         const conv = await conversaciones.obtenerOCrearWhatsapp(rem.tel);
         await db.query('UPDATE agente_conversaciones SET bot_pausado = 1 WHERE id = ?', [conv.id]);
@@ -126,8 +110,8 @@ async function procesarMensaje(data, ctxBase) {
         return;
     }
 
-    if (yaVisto(id)) return;
-    if (demasiados(rem.tel)) return;
+    if (!(await wa.marcarVisto(id))) return; // Evolution reintentó: ya lo atendimos
+    if (await demasiados(rem.tel)) return;
 
     const cfg = await wa.leerFila();
     if (!Number(cfg.wa_activo)) return;
@@ -167,30 +151,30 @@ async function procesarMensaje(data, ctxBase) {
     if (!enviado) console.error('No se pudo entregar la respuesta de WhatsApp a', rem.tel);
 }
 
+async function procesarPayload(payload, base) {
+    const evento = String(payload.event || '').toUpperCase().replace(/[.\-]/g, '_');
+    if (evento === 'CONNECTION_UPDATE') {
+        await wa.actualizarEstado(payload.data && (payload.data.state || payload.data.status));
+        return;
+    }
+    if (evento !== 'MESSAGES_UPSERT') return;
+    const lista = Array.isArray(payload.data) ? payload.data : [payload.data];
+    for (const data of lista) {
+        if (!data || !data.key) continue;
+        const rem = remitente(data);
+        // Un cliente a la vez (candado de Postgres): sus mensajes se atienden en orden aunque haya varias instancias
+        await conCandado(`wa:${rem ? rem.tel : 'x'}`, () => procesarMensaje(data, base))
+            .catch((e) => console.error('Error al procesar el WhatsApp:', e.message));
+    }
+}
+
 router.post('/api/whatsapp/webhook/:secreto', async (req, res) => {
     let valido = false;
     try { valido = await wa.secretoValido(req.params.secreto); } catch (_) { /* tratado como inválido */ }
     if (!valido) return res.status(404).json({ error: 'No encontrado' });
     res.json({ ok: true }); // respuesta inmediata; el trabajo sigue en segundo plano
-
-    const payload = req.body || {};
-    const evento = String(payload.event || '').toUpperCase().replace(/[.\-]/g, '_');
     const base = String(process.env.APP_URL || '').replace(/\/+$/, '');
-    try {
-        if (evento === 'CONNECTION_UPDATE') {
-            await wa.actualizarEstado(payload.data && (payload.data.state || payload.data.status));
-            return;
-        }
-        if (evento !== 'MESSAGES_UPSERT') return;
-        const lista = Array.isArray(payload.data) ? payload.data : [payload.data];
-        for (const data of lista) {
-            if (!data || !data.key) continue;
-            const rem = remitente(data);
-            enCola(rem ? rem.tel : 'x', () => procesarMensaje(data, base)).catch((e) => console.error('Error al procesar el WhatsApp:', e));
-        }
-    } catch (e) {
-        console.error('Error en el webhook de WhatsApp:', e);
-    }
+    enSegundoPlano(procesarPayload(req.body || {}, base));
 });
 
 module.exports = router;

@@ -440,6 +440,34 @@ CREATE TABLE IF NOT EXISTS vapi_tools (
 );
 ALTER TABLE vapi_tools ENABLE ROW LEVEL SECURITY;
 
+-- Sesiones de login en la base de datos (sirven en Vercel y sobreviven a reinicios del servidor)
+-- Relacionado con: app.js (connect-pg-simple). expire es timestamptz para no depender de la zona horaria.
+CREATE TABLE IF NOT EXISTS user_sessions (
+    sid VARCHAR NOT NULL PRIMARY KEY,
+    sess JSON NOT NULL,
+    expire TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_expire ON user_sessions(expire);
+ALTER TABLE user_sessions ENABLE ROW LEVEL SECURITY;
+
+-- Candados con vencimiento (exclusión entre instancias sin retener conexiones de la base de datos)
+-- Relacionado con: services/segundoPlano.js (conCandado)
+CREATE TABLE IF NOT EXISTS candados (
+    clave VARCHAR(120) PRIMARY KEY,
+    expira TIMESTAMPTZ NOT NULL
+);
+ALTER TABLE candados ENABLE ROW LEVEL SECURITY;
+
+-- Ids de mensajes de WhatsApp: "visto" (evita responder dos veces) y "enviado" (lo envió el sistema).
+-- En la base de datos porque en serverless cada petición puede caer en una instancia distinta.
+CREATE TABLE IF NOT EXISTS wa_ids (
+    id VARCHAR(160) NOT NULL,
+    tipo VARCHAR(10) NOT NULL CHECK (tipo IN ('visto','enviado')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id, tipo)
+);
+ALTER TABLE wa_ids ENABLE ROW LEVEL SECURITY;
+
 CREATE INDEX IF NOT EXISTS idx_agente_conv_tel ON agente_conversaciones(telefono, canal, ultimo_mensaje_at DESC);
 CREATE INDEX IF NOT EXISTS idx_agente_msg_conv ON agente_mensajes(conversacion_id, id);
 ALTER TABLE agentes_config ENABLE ROW LEVEL SECURITY;

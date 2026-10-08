@@ -7,6 +7,7 @@
 const express = require('express');
 const db = require('../db');
 const avisos = require('../services/agente/avisos');
+const { enSegundoPlano } = require('../services/segundoPlano');
 
 const ESTADOS = ['pendiente', 'confirmada', 'sentada', 'completada', 'cancelada', 'no_show'];
 const ACTIVAS = ['pendiente', 'confirmada'];
@@ -175,7 +176,7 @@ staff.put('/api/reservas/:id(\\d+)/estado', async (req, res) => {
         }
         await connection.commit();
         res.json({ ok: true });
-        if (estado === 'confirmada') avisos.reservaConfirmada(Number(req.params.id)).catch(() => {});
+        if (estado === 'confirmada') enSegundoPlano(avisos.reservaConfirmada(Number(req.params.id)));
     } catch (e) {
         if (connection) await connection.rollback().catch(() => {});
         console.error('Error al cambiar estado de reserva:', e);

@@ -150,7 +150,7 @@ async function actualizarDesdeSesion(session) {
                 if (ped[0]) {
                     await db.query(`INSERT INTO mesa_alertas (pedido_id, tipo, mensaje) VALUES (?, 'pago_recibido', 'Pago con Stripe confirmado')`, [ped[0].id]);
                     // Aviso al cliente por WhatsApp (carga perezosa: evita dependencias circulares)
-                    require('./agente/avisos').pedido(ped[0].id, 'pago').catch(() => {});
+                    require('./segundoPlano').enSegundoPlano(require('./agente/avisos').pedido(ped[0].id, 'pago'));
                 }
             } catch (e) { console.error('No se pudo registrar el aviso de pago:', e.message); }
         }

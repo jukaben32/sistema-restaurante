@@ -24,3 +24,7 @@ Thumbs.db
 # Secretos y entorno
 .env
 !.env.example
+
+# Copiado en el build de Vercel (scripts/copy-vendor.js)
+public/vendor/
+.vercel

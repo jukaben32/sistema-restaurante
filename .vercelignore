@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+node_modules
+tests
+docs
+Dockerfile
+.dockerignore
+docker-compose*.yml
+dist
+*.md
