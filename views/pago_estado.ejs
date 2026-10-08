@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estado del pago · <%= negocio %></title>
+    <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/martin.css">
+</head>
+<body class="rm">
+<main class="rm-page container d-flex align-items-center justify-content-center py-5" style="max-width:480px;">
+    <div class="rm-card w-100 text-center p-4">
+        <div class="small text-muted mb-3"><%= negocio %></div>
+        <% const fmt = (n) => Number(n || 0).toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); %>
+        <% if (pago && (pago.estado === 'pagado' || pago.estado === 'usado')) { %>
+            <i class="bi bi-check-circle-fill" style="font-size:3rem;color:var(--rm-ok)"></i>
+            <h1 class="h4 mt-2 mb-1">¡Pago recibido!</h1>
+            <p class="text-muted mb-0"><%= pago.moneda %> <%= fmt(pago.monto) %> · Gracias por tu visita.</p>
+            <p class="small text-muted mt-3 mb-0">Ya puedes cerrar esta página; el personal verá el pago confirmado.</p>
+        <% } else if (cancelado || (pago && pago.estado === 'expirado')) { %>
+            <i class="bi bi-x-circle-fill" style="font-size:3rem;color:var(--rm-danger)"></i>
+            <h1 class="h4 mt-2 mb-1">Pago no completado</h1>
+            <p class="text-muted mb-0">No se realizó ningún cobro. Pide al personal un nuevo código si deseas intentarlo otra vez.</p>
+        <% } else if (pago) { %>
+            <span class="rm-pulse"></span>
+            <h1 class="h4 mt-2 mb-1">Confirmando tu pago…</h1>
+            <p class="text-muted mb-0">Esto toma unos segundos.</p>
+            <script>setTimeout(() => location.reload(), 3000);</script>
+        <% } else { %>
+            <i class="bi bi-question-circle" style="font-size:3rem;color:var(--rm-muted)"></i>
+            <h1 class="h4 mt-2 mb-1">Pago no encontrado</h1>
+            <p class="text-muted mb-0">Verifica el enlace o consulta con el personal.</p>
+        <% } %>
+    </div>
+</main>
+</body>
+</html>

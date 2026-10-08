@@ -170,6 +170,15 @@ $(document).ready(function() {
     // Nota: guardamos pagos en memoria para enviarlos al backend al generar factura.
     let pagosFactura = null; // null = no definido / no mixto; Array = lista de pagos
 
+    // Stripe: si está activo, se habilita como medio de pago (simple y dentro de pago mixto)
+    if (window.StripeCobro) {
+        window.StripeCobro.estado().then(e => {
+            window.__stripeOn = !!(e && e.habilitado);
+            const opt = document.getElementById('optStripe');
+            if (opt && window.__stripeOn) { opt.hidden = false; opt.disabled = false; }
+        });
+    }
+
     function parseMoneyInput(value) {
         const v = String(value ?? '').trim();
         if (!v) return 0;
@@ -243,6 +252,7 @@ $(document).ready(function() {
                                     <option value="transferencia">Transferencia</option>
                                     <option value="tarjeta">Tarjeta</option>
                                     <option value="qr">QR</option>
+                                    ${window.__stripeOn ? '<option value="stripe">Stripe (QR al cliente)</option>' : ''}
                                 </select>
                             </div>
                             <div class="col-4">
@@ -725,11 +735,29 @@ $(document).ready(function() {
         };
 
         if (forma_pago === 'mixto') {
-            pedirPagosMixtos(totalFactura).then(pagos => {
+            pedirPagosMixtos(totalFactura).then(async pagos => {
                 if (!pagos) return; // cancelado
-                pagosFactura = pagos;
-                enviarFactura(pagosFactura);
+                try {
+                    // Filas "Stripe": cobro con QR antes de facturar (public/js/stripe-cobro.js)
+                    const finales = await window.StripeCobro.resolverPagos(pagos, { descripcion: 'Venta rápida' });
+                    if (!finales) return; // cobro cancelado
+                    pagosFactura = finales;
+                    enviarFactura(pagosFactura);
+                } catch (err) {
+                    mostrarAlerta('error', err.message);
+                }
             });
+            return;
+        }
+
+        if (forma_pago === 'stripe') {
+            window.StripeCobro.cobrar({ monto: totalFactura, descripcion: 'Venta rápida' })
+                .then(r => {
+                    if (!r) return; // cobro cancelado
+                    pagosFactura = [{ metodo: 'stripe', monto: r.monto, stripe_pago_id: r.stripe_pago_id }];
+                    enviarFactura(pagosFactura);
+                })
+                .catch(err => mostrarAlerta('error', err.message));
             return;
         }
 

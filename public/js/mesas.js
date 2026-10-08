@@ -102,6 +102,7 @@ $(function() {
                   <option value="transferencia">Transferencia</option>
                   <option value="tarjeta">Tarjeta</option>
                   <option value="qr">QR</option>
+                  ${window.__stripeOn ? '<option value="stripe">Stripe (QR al cliente)</option>' : ''}
                 </select>
               </div>
               <div class="col-4">
@@ -894,6 +895,14 @@ $(function() {
     } catch (_) { /* ignorar errores de red */ }
   }
 
+  // Expuesto para public/js/alertas-mesas.js (refrescar al atender un pedido del menú QR)
+  window.refreshMesas = refreshMesas;
+
+  // ¿Stripe activo? (muestra la opción en el modal de pagos)
+  if (window.StripeCobro) {
+    window.StripeCobro.estado().then(e => { window.__stripeOn = !!(e && e.habilitado); });
+  }
+
   // refrescar cada 3s
   setInterval(refreshMesas, 3000);
   // primera carga
@@ -916,10 +925,20 @@ $(function() {
       }, 0);
 
       // Modal de pago mixto (permite 1 o varios medios)
-      const pagos = await runWithOffcanvasHidden(async () => {
+      const pagosModal = await runWithOffcanvasHidden(async () => {
         return await pedirPagosMixtos(totalPedido);
       });
-      if(!pagos) return;
+      if(!pagosModal) return;
+
+      // Filas "Stripe": se cobran con QR al cliente antes de facturar
+      // Relacionado con: public/js/stripe-cobro.js y routes/stripe.js
+      const pagos = await runWithOffcanvasHidden(async () => {
+        return await window.StripeCobro.resolverPagos(pagosModal, {
+          pedidoId: pedidoActual.id,
+          descripcion: `Mesa ${pedidoActual.mesa_numero || pedidoActual.mesa_id || ''}`.trim()
+        });
+      });
+      if(!pagos) return; // cobro cancelado
 
       const resp = await fetch(`/api/mesas/pedidos/${pedidoActual.id}/facturar`, {
         method:'POST',

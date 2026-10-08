@@ -5,6 +5,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { exec } = require('child_process');
+const stripeService = require('../services/stripe');
+const inventarioService = require('../services/inventario');
 
 // Rutas para gestión de mesas y pedidos de restaurante
 // - Renderiza la vista de mesas (GET /mesas)
@@ -1089,7 +1091,10 @@ router.post('/pedidos/:pedidoId/facturar', async (req, res) => {
                     }))
                     .filter(p => ['efectivo', 'transferencia', 'tarjeta', 'qr'].includes(p.metodo) && Number.isFinite(p.monto) && p.monto > 0);
             };
-            const pagosNorm = normalizarPagos(pagos);
+            // Pagos con Stripe: se verifican contra Stripe y se convierten en pagos de tarjeta
+            // Relacionado con: services/stripe.js (aplicarPagosStripe)
+            const stripeAplicado = await stripeService.aplicarPagosStripe(connection, pagos);
+            const pagosNorm = normalizarPagos(stripeAplicado.pagos);
             const sumaPagos = pagosNorm.reduce((acc, p) => acc + Number(p.monto || 0), 0);
 
             let formaPagoDB = String(forma_pago || 'efectivo').toLowerCase();
@@ -1141,8 +1146,17 @@ router.post('/pedidos/:pedidoId/facturar', async (req, res) => {
                 // Si la tabla no existe, no rompemos la facturación
             }
 
+            await stripeService.marcarUsados(connection, stripeAplicado.ids, facturaId);
+            // Inventario: descuento de insumos por receta
+            await inventarioService.descontarPorFactura(connection, facturaId, req.session?.user?.usuario || null);
+
             await connection.query(`UPDATE pedidos SET estado = 'cerrado', total = ? WHERE id = ?`, [total, pedidoId]);
             await connection.query(`UPDATE mesas SET estado = 'libre' WHERE id = ?`, [pedido.mesa_id]);
+            // Avisos del menú QR de esta mesa quedan atendidos al cerrar la cuenta
+            await connection.query(
+                `UPDATE mesa_alertas SET atendida = 1, atendida_at = NOW() WHERE mesa_id = ? AND atendida = 0`,
+                [pedido.mesa_id]
+            );
 
             await connection.commit();
             connection.release();
@@ -1151,7 +1165,7 @@ router.post('/pedidos/:pedidoId/facturar', async (req, res) => {
             await connection.rollback();
             connection.release();
             console.error('Error en facturación desde pedido:', error);
-            res.status(500).json({ error: 'Error al facturar pedido' });
+            res.status(error && error.publico ? 400 : 500).json({ error: error && error.publico ? error.message : 'Error al facturar pedido' });
         }
     } catch (error) {
         console.error('Error al preparar facturación:', error);

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('partials/head') %>
+    <title>QR de mesas · <%= negocio %></title>
+    <style>
+        .qr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+        .qr-card { text-align: center; padding: 1.1rem .9rem; break-inside: avoid; }
+        .qr-card img { width: 100%; max-width: 200px; aspect-ratio: 1; }
+        .qr-card .mesa { font-size: 1.6rem; font-weight: 800; letter-spacing: -.02em; }
+        .qr-card .neg { font-size: .8rem; color: var(--rm-muted); text-transform: uppercase; letter-spacing: .08em; }
+        @media print {
+            nav, footer, .no-print { display: none !important; }
+            body.rm { background: #fff; }
+            .qr-grid { grid-template-columns: repeat(3, 1fr); }
+            .rm-card { box-shadow: none; border: 1px dashed #999; }
+        }
+    </style>
+</head>
+<body class="rm">
+    <%- include('partials/navbar') %>
+    <main class="rm-page container pb-5">
+        <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3 no-print">
+            <div>
+                <h1 class="rm-title h3"><i class="bi bi-qr-code me-2" style="color:var(--rm-accent)"></i>QR del menú por mesa</h1>
+                <p class="rm-sub">Imprime y coloca cada código en su mesa. El cliente ve la carta, pide, llama al mesero o pide la cuenta.</p>
+            </div>
+            <button class="btn btn-rm" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir</button>
+        </div>
+
+        <% if (avisoLocal) { %>
+            <div class="alert alert-warning no-print">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                Estás abriendo la app como <b>localhost</b>: los celulares no podrán abrir estos QR.
+                Entra con la IP de esta PC en la red (ej. <code>http://192.168.1.20:3000/mesas-qr</code>) o define la
+                <a href="/configuracion/stripe">URL pública</a>.
+            </div>
+        <% } %>
+
+        <% if (tarjetas.length === 0) { %>
+            <div class="rm-card rm-empty"><i class="bi bi-grid"></i>Primero crea mesas en <a href="/mesas">Mesas</a>.</div>
+        <% } %>
+
+        <div class="qr-grid">
+            <% tarjetas.forEach(function (t) { %>
+                <div class="rm-card qr-card">
+                    <div class="neg"><%= negocio %></div>
+                    <div class="mesa">Mesa <%= t.numero %></div>
+                    <img src="<%= t.qr %>" alt="QR del menú de la mesa <%= t.numero %>">
+                    <div class="small">Escanea para ver el menú y pedir</div>
+                    <% if (user && user.rol === 'administrador') { %>
+                        <div class="no-print mt-2 d-flex justify-content-center gap-1">
+                            <a class="btn btn-sm btn-outline-secondary" href="<%= t.url %>" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> Probar</a>
+                            <button class="btn btn-sm btn-outline-danger" data-regen="<%= t.id %>" title="Invalida el QR actual y crea uno nuevo"><i class="bi bi-arrow-repeat"></i> Nuevo QR</button>
+                        </div>
+                    <% } %>
+                </div>
+            <% }); %>
+        </div>
+        <p class="small text-muted mt-3 no-print">Enlace base: <code><%= base %></code></p>
+    </main>
+    <%- include('partials/footer') %>
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
+    <script>
+    document.querySelectorAll('[data-regen]').forEach((b) => b.addEventListener('click', async () => {
+        const ok = await Swal.fire({ icon: 'warning', title: '¿Generar un QR nuevo?', text: 'El código impreso actual dejará de funcionar.', showCancelButton: true, confirmButtonText: 'Sí, generar', cancelButtonText: 'Cancelar' });
+        if (!ok.isConfirmed) return;
+        const r = await fetch(`/api/mesas-qr/${b.dataset.regen}/regenerar`, { method: 'POST', headers: { Accept: 'application/json' } });
+        if (r.ok) location.reload(); else Swal.fire({ icon: 'error', title: 'No se pudo regenerar' });
+    }));
+    </script>
+</body>
+</html>

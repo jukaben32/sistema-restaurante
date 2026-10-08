@@ -31,6 +31,13 @@ createRequiredDirectories();
 // Configuración
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+// Código de país para enlaces de WhatsApp con números locales de 10 dígitos (views/factura.ejs)
+app.locals.codigoPaisWhatsapp = process.env.WHATSAPP_CODIGO_PAIS || '';
+
+// Stripe (público): webhook con body crudo -> debe ir ANTES de express.json. Incluye /pago/estado.
+// Relacionado con: routes/stripe.js
+const stripeRoutes = require('./routes/stripe');
+app.use(stripeRoutes.publico);
 
 // Aumentar el límite de tamaño del cuerpo de la petición
 app.use(express.json({limit: '50mb'}));
@@ -98,6 +105,32 @@ const usuariosRoutes = require('./routes/usuarios');
 
 // Auth routes (públicas): /login /logout /setup
 app.use(authRoutes);
+
+// ===== Funciones modernas (Restaurant Martin) =====
+const menuRoutes = require('./routes/menu');
+const reservasRoutes = require('./routes/reservas');
+const inventarioRoutes = require('./routes/inventario');
+const dashboardRoutes = require('./routes/dashboard');
+const personal = requireRole(['mesero', 'administrador']);
+
+// Públicas: menú QR por mesa (/menu/:token) y formulario de reservas (/reservar)
+app.use(menuRoutes.publico);
+app.use(reservasRoutes.publico);
+
+// Personal: avisos del menú QR, hoja de QR, reservas
+app.use(['/api/mesa-alertas', '/mesas-qr', '/api/mesas-qr'], personal);
+app.use(menuRoutes.staff);
+app.use(['/reservas', '/api/reservas'], personal);
+app.use(reservasRoutes.staff);
+
+// Administrador: dashboard e inventario
+app.use(['/dashboard', '/api/dashboard', '/inventario', '/api/inventario'], requireRole('administrador'));
+app.use(dashboardRoutes);
+app.use(inventarioRoutes);
+
+// Stripe: cobros (personal) y configuración (admin; antes de /configuracion)
+app.use('/api/stripe', personal, stripeRoutes.staff);
+app.use('/configuracion/stripe', requireRole('administrador'), stripeRoutes.admin);
 
 // Ruta principal (requiere login)
 app.get('/', requireAuth, (req, res) => {

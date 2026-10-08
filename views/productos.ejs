@@ -94,7 +94,11 @@
                             <% productos.forEach(function(producto) { %>
                                 <tr>
                                     <td><%= producto.codigo %></td>
-                                    <td><%= producto.nombre %></td>
+                                    <td>
+                                        <%= producto.nombre %>
+                                        <% if (producto.categoria) { %><span class="badge text-bg-light border ms-1"><%= producto.categoria %></span><% } %>
+                                        <% if (Number(producto.disponible) === 0) { %><span class="badge text-bg-warning ms-1">Agotado</span><% } %>
+                                    </td>
                                     <td class="text-end">$<%= (Number(producto.precio_kg) || 0).toFixed(2) %></td>
                                     <td class="text-end">$<%= (Number(producto.precio_unidad) || 0).toFixed(2) %></td>
                                     <td class="text-end">$<%= (Number(producto.precio_libra) || 0).toFixed(2) %></td>
@@ -170,6 +174,43 @@
                                 <div class="mb-3">
                                     <label class="form-label">Precio LB</label>
                                     <input type="number" class="form-control" id="precioLibra" step="0.01" min="0" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Carta digital (menú QR). Relacionado con: routes/menu.js, views/menu.ejs -->
+                        <hr class="my-2">
+                        <div class="small text-muted fw-semibold mb-2"><i class="bi bi-qr-code me-1"></i>Carta digital</div>
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label class="form-label small" for="categoria">Categoría</label>
+                                <input type="text" class="form-control" id="categoria" list="categoriasLista" placeholder="Ej: Entradas, Platos fuertes, Bebidas" maxlength="60">
+                                <datalist id="categoriasLista">
+                                    <% [...new Set(productos.map(p => p.categoria).filter(Boolean))].sort().forEach(function(c) { %>
+                                        <option value="<%= c %>"></option>
+                                    <% }); %>
+                                </datalist>
+                            </div>
+                            <div class="col-md-6 d-flex align-items-end gap-3 pb-1">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="enMenu" checked>
+                                    <label class="form-check-label small" for="enMenu">Mostrar en el menú</label>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="disponible" checked>
+                                    <label class="form-check-label small" for="disponible">Disponible</label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small" for="descripcion">Descripción</label>
+                                <textarea class="form-control" id="descripcion" rows="2" maxlength="400" placeholder="Ingredientes, porción, alérgenos…"></textarea>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small" for="imagenProducto">Foto (JPG, PNG o WebP, máx. 3 MB)</label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <img id="imagenPreview" alt="" class="rounded border d-none" style="width:56px;height:56px;object-fit:cover;">
+                                    <input type="file" class="form-control" id="imagenProducto" accept="image/jpeg,image/png,image/webp">
+                                    <button type="button" class="btn btn-outline-danger btn-sm d-none" id="quitarImagen" title="Quitar foto"><i class="bi bi-x-lg"></i></button>
                                 </div>
                             </div>
                         </div>

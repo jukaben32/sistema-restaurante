@@ -30,7 +30,7 @@ async function verificarConfiguracion() {
                 INSERT INTO configuracion_impresion 
                 (nombre_negocio, direccion, telefono, pie_pagina) 
                 VALUES 
-                ('Mi Negocio', 'Dirección del Negocio', 'Teléfono', '¡Gracias por su compra!')
+                ('Restaurant Martin', NULL, NULL, '¡Gracias por tu visita!')
             `);
             console.log('Configuración inicial creada');
         }

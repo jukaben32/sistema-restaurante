@@ -3,18 +3,21 @@
     <% const u = (typeof user !== 'undefined' && user) ? user : null; %>
     <% const rol = u ? String(u.rol || '').toLowerCase() : ''; %>
 
-    <a class="navbar-brand fw-bold text-truncate m-0" href="/" style="color:#fff;font-size:1.25rem;max-width:52vw;">Sistema de Facturación</a>
+    <a class="navbar-brand fw-bold text-truncate m-0" href="/" style="color:#fff;font-size:1.25rem;max-width:52vw;"><img src="/icons/icon.svg" alt="" width="26" height="26" class="me-2 align-text-bottom">Restaurant Martin</a>
 
     <div class="d-flex align-items-center gap-2 ms-auto flex-nowrap overflow-auto" style="max-width:46vw; scrollbar-width:none;">
       <!-- Menú según rol -->
       <!-- Relacionado con: middleware/auth.js (requireRole) y server.js (protección de rutas) -->
 
       <% if (rol === 'administrador') { %>
-        <a href="/" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Inicio"><i class="bi bi-house-fill"></i></a>
+        <a href="/dashboard" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Dashboard"><i class="bi bi-speedometer2"></i></a>
+        <a href="/" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Venta rápida"><i class="bi bi-house-fill"></i></a>
         <a href="/mesas" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Mesas"><i class="bi bi-grid"></i></a>
         <a href="/cocina" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Cocina"><i class="bi bi-egg-fried"></i></a>
         <a href="/ventas" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Historial de Ventas"><i class="bi bi-receipt"></i></a>
+        <a href="/reservas" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Reservas"><i class="bi bi-calendar-check"></i></a>
         <a href="/productos" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Gestionar Productos"><i class="bi bi-box"></i></a>
+        <a href="/inventario" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Inventario"><i class="bi bi-box-seam"></i></a>
         <a href="/clientes" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Gestionar Clientes"><i class="bi bi-people"></i></a>
         <a href="/usuarios" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Usuarios"><i class="bi bi-person-gear"></i></a>
         <a href="/configuracion" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Configuración"><i class="bi bi-gear"></i></a>
@@ -23,6 +26,7 @@
       <% if (rol === 'mesero') { %>
         <a href="/mesas" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Mesas"><i class="bi bi-grid"></i></a>
         <a href="/cocina" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Cocina (Listos)"><i class="bi bi-egg-fried"></i></a>
+        <a href="/reservas" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Reservas"><i class="bi bi-calendar-check"></i></a>
       <% } %>
 
       <% if (rol === 'cocinero') { %>
@@ -44,4 +48,4 @@
     </div>
   </div>
 </nav>
-
+<script src="/js/pwa.js" defer></script>

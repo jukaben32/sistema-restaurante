@@ -34,18 +34,35 @@ const pool = new Pool({
     max: 10
 });
 
-pool.on('connect', (client) => {
-    client.query(`SET TIME ZONE '${TIMEZONE.replace(/'/g, '')}'`).catch((err) => {
-        console.error('No se pudo fijar la zona horaria de la sesión:', err.message);
-    });
-});
+// Fija la zona horaria una sola vez por conexión física (NOW()/DATE() en hora local del restaurante).
+async function acquire() {
+    const client = await pool.connect();
+    if (!client.__tzSet) {
+        try {
+            await client.query(`SET TIME ZONE '${TIMEZONE.replace(/'/g, '')}'`);
+            client.__tzSet = true;
+        } catch (err) {
+            console.error('No se pudo fijar la zona horaria de la sesión:', err.message);
+        }
+    }
+    return client;
+}
+
+async function poolQuery(sql, params) {
+    const client = await acquire();
+    try {
+        return await runQuery(client, sql, params);
+    } finally {
+        client.release();
+    }
+}
 
 pool.on('error', (err) => {
     console.error('Error inesperado en el pool de PostgreSQL:', err.message);
 });
 
 // Tablas sin columna "id" (no se les agrega RETURNING id en INSERT)
-const TABLES_WITHOUT_ID = new Set(['producto_hijos']);
+const TABLES_WITHOUT_ID = new Set(['producto_hijos', 'recetas', 'producto_imagenes']);
 
 /**
  * Traduce una sentencia con placeholders "?" (estilo mysql2) a "$n" de PostgreSQL.
@@ -163,9 +180,9 @@ function wrapClient(client) {
 }
 
 const db = {
-    query: (sql, params) => runQuery(pool, sql, params),
-    execute: (sql, params) => runQuery(pool, sql, params),
-    getConnection: async () => wrapClient(await pool.connect()),
+    query: poolQuery,
+    execute: poolQuery,
+    getConnection: async () => wrapClient(await acquire()),
     end: () => pool.end(),
     pool
 };

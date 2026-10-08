@@ -25,6 +25,25 @@ Node.js 18+ · Express · EJS · PostgreSQL (Supabase) · ExcelJS · Bootstrap 5
 
 Para usarla desde otros equipos de la red local, abre el puerto 3000 en el firewall y entra por la IP del servidor.
 
+## Funciones modernas
+
+| Función | Dónde | Quién |
+|---|---|---|
+| **Cobro con Stripe**: QR en pantalla, el cliente paga con tarjeta / Apple Pay / Google Pay desde su celular; el pago se verifica en el servidor y no puede aplicarse dos veces | Mesas y Venta rápida → medio de pago "Stripe" · Configuración → Pagos con Stripe | Mesero / Admin |
+| **Menú digital por QR** por mesa: carta con fotos y categorías, pedido desde el celular (el mesero lo confirma), llamar al mesero, pedir la cuenta, estado del pedido en vivo | `/mesas-qr` (imprimir QR) · el cliente abre `/menu/<token>` | Público / Mesero |
+| **Avisos en vivo** con sonido cuando una mesa pide, llama o solicita la cuenta | Mesas y Dashboard | Mesero / Admin |
+| **Reservas**: agenda por día, asignación de mesa, detección de choques, WhatsApp al cliente y formulario público | `/reservas` · público `/reservar` | Mesero / Admin |
+| **Inventario**: insumos, recetas por plato con costo y margen, descuento automático al facturar, alertas de stock bajo | `/inventario` | Admin |
+| **Dashboard en vivo**: ventas de hoy vs. ayer, 7 días, más vendidos, mesas, cocina, reservas, stock | `/dashboard` (inicio del admin) | Admin |
+| **Factura por WhatsApp** | Botón en la factura | Todos |
+| **App instalable (PWA)** para celulares y tablets | Menú del navegador → "Instalar" (requiere HTTPS o localhost) | Todos |
+
+### Configurar Stripe
+1. En [dashboard.stripe.com](https://dashboard.stripe.com) → Developers → API keys, copia la llave secreta (`sk_test_…` para pruebas).
+2. En la app: Configuración → **Pagos con Stripe**, pega la llave, elige la moneda, activa el interruptor y pulsa **Probar conexión**.
+3. Para que los clientes vuelvan a una página de confirmación, abre la app con la IP de la PC en la red (ej. `http://192.168.1.20:3000`) o define la URL pública.
+4. Webhook (opcional, si publicas la app en internet): endpoint `https://TU_DOMINIO/stripe/webhook` con los eventos `checkout.session.completed`, `checkout.session.async_payment_succeeded` y `checkout.session.expired`.
+
 ## Seguridad
 - `.env` **no** se sube a Git (contiene la contraseña de la base de datos).
 - Las tablas tienen RLS activado en Supabase: la API pública (anon key) no puede leerlas. Solo el servidor accede, con `DATABASE_URL`.

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('partials/head') %>
+    <title>Pagos con Stripe · Restaurant Martin</title>
+</head>
+<body class="rm">
+    <%- include('partials/navbar') %>
+
+    <main class="rm-page container pb-5" style="max-width: 920px;">
+        <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+            <div>
+                <h1 class="rm-title h3"><i class="bi bi-credit-card-2-front me-2" style="color:var(--rm-accent)"></i>Pagos con Stripe</h1>
+                <p class="rm-sub">El cliente escanea un QR con su celular y paga con tarjeta, Apple Pay o Google Pay. El dinero va directo a tu cuenta de Stripe.</p>
+            </div>
+            <a href="/configuracion" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Configuración</a>
+        </div>
+
+        <div id="estadoBox" class="mb-3">
+            <% if (cfg.habilitado) { %>
+                <div class="alert alert-success d-flex align-items-center gap-2 mb-0">
+                    <i class="bi bi-check-circle-fill"></i>
+                    <div>Conectado — ya puedes cobrar con Stripe desde Mesas y Venta rápida.
+                        <% if (cfg.modoPrueba) { %><span class="rm-chip warn ms-1">Modo prueba</span><% } %></div>
+                </div>
+            <% } else { %>
+                <div class="alert alert-warning d-flex align-items-center gap-2 mb-0">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <div>No conectado — ingresa tus llaves y activa Stripe para cobrar en línea.</div>
+                </div>
+            <% } %>
+        </div>
+
+        <form id="formStripe" class="rm-card" autocomplete="off">
+            <div class="rm-card-h"><i class="bi bi-key"></i><h2>Tu cuenta de Stripe</h2></div>
+            <div class="rm-card-b">
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" role="switch" id="habilitado" <%= cfg.habilitado ? 'checked' : '' %>>
+                    <label class="form-check-label fw-semibold" for="habilitado">Aceptar pagos con Stripe</label>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold" for="publishableKey">Llave publicable (pk_…)</label>
+                    <input id="publishableKey" class="form-control font-monospace" placeholder="pk_live_… o pk_test_…" value="<%= cfg.publishableKey %>">
+                    <div class="form-text">Es pública; se guarda tal cual.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold" for="secretKey">Llave secreta (sk_…)</label>
+                    <div class="input-group">
+                        <input id="secretKey" type="password" class="form-control font-monospace"
+                               placeholder="<%= cfg.tieneSecretKey ? ('Guardada: ' + cfg.secretKeyMascara + ' — deja vacío para conservarla') : 'sk_live_… o sk_test_…' %>">
+                        <button class="btn btn-outline-secondary" type="button" id="toggleSecret" aria-label="Mostrar u ocultar"><i class="bi bi-eye"></i></button>
+                    </div>
+                    <div class="form-text">Se guarda cifrada (AES-256) y solo se usa desde el servidor.</div>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-sm-4">
+                        <label class="form-label small fw-semibold" for="moneda">Moneda</label>
+                        <select id="moneda" class="form-select">
+                            <% const monedas = [['usd','USD — Dólar'],['dop','DOP — Peso dominicano'],['cop','COP — Peso colombiano'],['mxn','MXN — Peso mexicano'],['eur','EUR — Euro'],['pen','PEN — Sol'],['clp','CLP — Peso chileno']]; %>
+                            <% let found = false; monedas.forEach(([v,l]) => { if (v === cfg.moneda) found = true; %>
+                                <option value="<%= v %>" <%= v === cfg.moneda ? 'selected' : '' %>><%= l %></option>
+                            <% }); if (!found) { %><option value="<%= cfg.moneda %>" selected><%= cfg.moneda.toUpperCase() %></option><% } %>
+                        </select>
+                    </div>
+                    <div class="col-sm-8">
+                        <label class="form-label small fw-semibold" for="appUrlPublica">URL pública de la app (opcional)</label>
+                        <input id="appUrlPublica" class="form-control" placeholder="https://pos.restaurantmartin.com" value="<%= cfg.appUrlPublica %>">
+                        <div class="form-text">A dónde vuelve el cliente tras pagar. Si la dejas vacía se usa la dirección con la que abres la app.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rm-card-h border-top"><i class="bi bi-broadcast"></i><h2>Webhook (opcional)</h2></div>
+            <div class="rm-card-b">
+                <p class="small text-muted mb-2">
+                    La app consulta a Stripe directamente, así que funciona sin webhook. Si publicas la app en internet,
+                    agrega este endpoint en Stripe → Developers → Webhooks con los eventos
+                    <code>checkout.session.completed</code>, <code>checkout.session.async_payment_succeeded</code> y <code>checkout.session.expired</code>.
+                </p>
+                <div class="input-group input-group-sm mb-3">
+                    <input class="form-control font-monospace" value="<%= webhookUrl %>" readonly id="webhookUrl">
+                    <button class="btn btn-outline-secondary" type="button" id="copyWebhook"><i class="bi bi-clipboard"></i> Copiar</button>
+                </div>
+                <label class="form-label small fw-semibold" for="webhookSecret">Signing secret (whsec_…)</label>
+                <input id="webhookSecret" type="password" class="form-control font-monospace"
+                       placeholder="<%= cfg.tieneWebhookSecret ? 'Guardado — deja vacío para conservarlo' : 'whsec_…' %>">
+            </div>
+
+            <div class="rm-card-b border-top d-flex flex-wrap gap-2 align-items-center">
+                <button type="submit" class="btn btn-rm" id="btnGuardar"><i class="bi bi-save"></i> Guardar</button>
+                <button type="button" class="btn btn-outline-secondary" id="btnProbar"><i class="bi bi-plug"></i> Probar conexión</button>
+                <span class="small text-muted ms-auto">Llaves en dashboard.stripe.com → Developers → API keys</span>
+            </div>
+        </form>
+    </main>
+
+    <%- include('partials/footer') %>
+
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
+    <script>
+    (function () {
+        const $ = (id) => document.getElementById(id);
+        $('toggleSecret').addEventListener('click', () => {
+            const i = $('secretKey');
+            i.type = i.type === 'password' ? 'text' : 'password';
+        });
+        $('copyWebhook').addEventListener('click', async () => {
+            try { await navigator.clipboard.writeText($('webhookUrl').value); Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Copiado', timer: 1500, showConfirmButton: false }); } catch (_) {}
+        });
+        $('formStripe').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = $('btnGuardar');
+            btn.disabled = true;
+            try {
+                const resp = await fetch('/configuracion/stripe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                    body: JSON.stringify({
+                        habilitado: $('habilitado').checked ? '1' : '0',
+                        publishableKey: $('publishableKey').value,
+                        secretKey: $('secretKey').value,
+                        webhookSecret: $('webhookSecret').value,
+                        moneda: $('moneda').value,
+                        appUrlPublica: $('appUrlPublica').value
+                    })
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok) throw new Error(data.error || 'No se pudo guardar');
+                await Swal.fire({ icon: 'success', title: 'Configuración guardada',
+                    text: data.habilitado ? 'Stripe está activo.' : 'Stripe quedó desactivado (activa el interruptor y guarda una llave secreta).' });
+                location.reload();
+            } catch (err) {
+                Swal.fire({ icon: 'error', title: err.message });
+            } finally { btn.disabled = false; }
+        });
+        $('btnProbar').addEventListener('click', async () => {
+            const btn = $('btnProbar');
+            btn.disabled = true;
+            try {
+                const resp = await fetch('/configuracion/stripe/probar', { method: 'POST', headers: { Accept: 'application/json' } });
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok) throw new Error(data.error || 'No se pudo conectar');
+                Swal.fire({ icon: 'success', title: 'Conexión correcta',
+                    html: `Cuenta: <b>${String(data.cuenta || '').replace(/[<>&]/g, '')}</b> (${data.pais || ''})<br>` +
+                          `${data.modoPrueba ? 'Modo prueba' : 'Modo real'} · Cobros ${data.cobrosHabilitados ? 'habilitados' : 'NO habilitados aún'}` });
+            } catch (err) {
+                Swal.fire({ icon: 'error', title: err.message });
+            } finally { btn.disabled = false; }
+        });
+    })();
+    </script>
+</body>
+</html>

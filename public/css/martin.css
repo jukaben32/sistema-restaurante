@@ -1,0 +1,103 @@
+/* Restaurant Martin — estilos compartidos de las pantallas nuevas
+   (dashboard, reservas, inventario, Stripe, menú QR). Se apoya en Bootstrap 5. */
+:root {
+  --rm-ink: #1f2933;
+  --rm-slate: #2c3e50;
+  --rm-muted: #64748b;
+  --rm-line: #e5e7eb;
+  --rm-bg: #f5f6f8;
+  --rm-surface: #ffffff;
+  --rm-accent: #c2410c;
+  --rm-accent-soft: #fff1e8;
+  --rm-ok: #15803d;
+  --rm-ok-soft: #e8f6ee;
+  --rm-warn: #b45309;
+  --rm-warn-soft: #fff7e6;
+  --rm-danger: #b91c1c;
+  --rm-danger-soft: #fdecec;
+  --rm-radius: 14px;
+  --rm-shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 1px 3px rgba(16, 24, 40, .08);
+}
+
+body.rm { background: var(--rm-bg); color: var(--rm-ink); min-height: 100vh; display: flex; flex-direction: column; }
+.rm-page { flex: 1 0 auto; }
+
+.rm-title { font-weight: 700; letter-spacing: -.01em; margin: 0; }
+.rm-sub { color: var(--rm-muted); font-size: .92rem; margin: .15rem 0 0; }
+
+.rm-card {
+  background: var(--rm-surface);
+  border: 1px solid var(--rm-line);
+  border-radius: var(--rm-radius);
+  box-shadow: var(--rm-shadow);
+}
+.rm-card-h { padding: .9rem 1.1rem; border-bottom: 1px solid var(--rm-line); display: flex; align-items: center; gap: .5rem; }
+.rm-card-h h2, .rm-card-h h3 { font-size: 1rem; font-weight: 650; margin: 0; }
+.rm-card-b { padding: 1rem 1.1rem; }
+
+/* KPI */
+.rm-kpi { padding: 1rem 1.1rem; }
+.rm-kpi .lbl { color: var(--rm-muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+.rm-kpi .val { font-size: 1.65rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; margin-top: .25rem; }
+.rm-kpi .delta { font-size: .8rem; font-weight: 600; }
+.rm-kpi .delta.up { color: var(--rm-ok); }
+.rm-kpi .delta.down { color: var(--rm-danger); }
+.rm-kpi .delta.flat { color: var(--rm-muted); }
+
+/* Chips de estado */
+.rm-chip { display: inline-flex; align-items: center; gap: .3rem; font-size: .75rem; font-weight: 600; padding: .2rem .55rem; border-radius: 999px; background: #eef2f7; color: var(--rm-slate); white-space: nowrap; }
+.rm-chip.ok { background: var(--rm-ok-soft); color: var(--rm-ok); }
+.rm-chip.warn { background: var(--rm-warn-soft); color: var(--rm-warn); }
+.rm-chip.danger { background: var(--rm-danger-soft); color: var(--rm-danger); }
+.rm-chip.accent { background: var(--rm-accent-soft); color: var(--rm-accent); }
+
+.btn-rm { background: var(--rm-accent); border-color: var(--rm-accent); color: #fff; }
+.btn-rm:hover, .btn-rm:focus { background: #9a3412; border-color: #9a3412; color: #fff; }
+
+.rm-empty { text-align: center; color: var(--rm-muted); padding: 2rem 1rem; }
+.rm-empty i { font-size: 1.8rem; display: block; margin-bottom: .4rem; opacity: .6; }
+
+.rm-table { margin: 0; }
+.rm-table th { font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--rm-muted); font-weight: 600; border-bottom-width: 1px; }
+.rm-table td { vertical-align: middle; }
+.num { font-variant-numeric: tabular-nums; text-align: right; }
+
+/* Barras simples (dashboard) */
+/* Una sola serie: barras <= 24px, extremo redondeado 4px y base recta, línea base fina */
+.rm-bars { position: relative; display: flex; align-items: flex-end; gap: 2px; height: 180px; padding-top: 1.2rem; border-bottom: 1px solid var(--rm-line); }
+.rm-bar { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; min-width: 0; cursor: default; outline: none; }
+.rm-bar .b { width: 100%; max-width: 24px; background: var(--rm-slate); border-radius: 4px 4px 0 0; min-height: 2px; transition: height .3s ease, opacity .15s; }
+.rm-bar.today .b { background: var(--rm-accent); }
+.rm-bar:hover .b, .rm-bar:focus-visible .b { opacity: .8; }
+.rm-bar:focus-visible { box-shadow: 0 0 0 2px var(--rm-accent); border-radius: 4px; }
+.rm-bar .v { font-size: .72rem; color: var(--rm-ink); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; margin-bottom: .2rem; min-height: 1em; }
+.rm-xaxis { display: flex; gap: 2px; margin-top: .3rem; }
+.rm-xaxis span { flex: 1; text-align: center; font-size: .72rem; color: var(--rm-muted); }
+.rm-tip { position: absolute; pointer-events: none; background: var(--rm-ink); color: #fff; border-radius: 8px; padding: .35rem .55rem; font-size: .78rem; white-space: nowrap; transform: translate(-50%, -100%); opacity: 0; transition: opacity .1s; z-index: 2; }
+.rm-tip b { display: block; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.rm-tip span { opacity: .75; }
+
+/* Lista con barra de progreso (top productos) */
+.rm-rank { list-style: none; margin: 0; padding: 0; }
+.rm-rank li { padding: .45rem 0; border-bottom: 1px dashed var(--rm-line); }
+.rm-rank li:last-child { border-bottom: 0; }
+.rm-rank .track { height: 6px; background: #eef2f7; border-radius: 99px; margin-top: .3rem; overflow: hidden; }
+.rm-rank .fill { height: 100%; background: var(--rm-accent); border-radius: 99px; }
+
+/* Avisos del menú QR en Mesas */
+.rm-alerts { position: fixed; right: 16px; bottom: 16px; z-index: 1080; display: flex; flex-direction: column; gap: .5rem; max-width: min(360px, calc(100vw - 32px)); }
+.rm-alert { background: var(--rm-ink); color: #fff; border-radius: 12px; padding: .7rem .8rem; box-shadow: 0 8px 24px rgba(0,0,0,.25); display: flex; gap: .6rem; align-items: center; animation: rmIn .25s ease; }
+.rm-alert .ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--rm-accent); flex: none; }
+.rm-alert .tx { flex: 1; font-size: .9rem; line-height: 1.25; }
+.rm-alert .tx small { display: block; opacity: .7; font-size: .75rem; }
+@keyframes rmIn { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* Cobro con Stripe (modal) */
+.rm-qr { background: #fff; border-radius: 12px; padding: .5rem; display: inline-block; border: 1px solid var(--rm-line); }
+.rm-qr img { width: 240px; height: 240px; display: block; }
+.rm-pulse { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--rm-warn); animation: rmPulse 1.2s infinite; margin-right: .35rem; vertical-align: middle; }
+@keyframes rmPulse { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .rm-alert, .rm-pulse, .rm-bar .b { animation: none; transition: none; }
+}

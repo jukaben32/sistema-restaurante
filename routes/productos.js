@@ -3,6 +3,24 @@ const router = express.Router();
 const db = require('../db');
 let ExcelJS; // import perezoso para template/import
 
+// Las escrituras (crear, editar, borrar, importar, fotos) son solo del administrador.
+// Este router también se monta en /api/productos para meseros (solo lectura / búsqueda).
+router.use((req, res, next) => {
+    if (req.method === 'GET' || req.method === 'HEAD') return next();
+    if (String(req.session?.user?.rol || '') === 'administrador') return next();
+    return res.status(403).json({ error: 'Solo el administrador puede modificar productos' });
+});
+
+// Normaliza los campos de la carta digital (menú QR) que vengan en el body
+function camposCarta(body) {
+    const out = {};
+    if (Object.prototype.hasOwnProperty.call(body, 'categoria')) out.categoria = String(body.categoria || '').trim().slice(0, 60) || null;
+    if (Object.prototype.hasOwnProperty.call(body, 'descripcion')) out.descripcion = String(body.descripcion || '').trim().slice(0, 400) || null;
+    if (Object.prototype.hasOwnProperty.call(body, 'en_menu')) out.en_menu = Number(body.en_menu) ? 1 : 0;
+    if (Object.prototype.hasOwnProperty.call(body, 'disponible')) out.disponible = Number(body.disponible) ? 1 : 0;
+    return out;
+}
+
 // GET /productos - Mostrar página de productos
 router.get('/', async (req, res) => {
     try {
@@ -205,7 +223,11 @@ router.delete('/:padreId(\\d+)/hijos-items/:itemId(\\d+)', async (req, res) => {
 // GET /productos/:id - Obtener un producto específico
 router.get('/:id(\\d+)', async (req, res) => {
     try {
-        const [productos] = await db.query('SELECT * FROM productos WHERE id = ?', [req.params.id]);
+        const [productos] = await db.query(
+            `SELECT p.*, EXISTS (SELECT 1 FROM producto_imagenes pi WHERE pi.producto_id = p.id) AS tiene_imagen
+             FROM productos p WHERE p.id = ?`,
+            [req.params.id]
+        );
         const producto = productos[0];
         if (!producto) {
             return res.status(404).json({ error: 'Producto no encontrado' });
@@ -227,9 +249,12 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ error: 'El código y nombre son requeridos' });
         }
 
-        const result = await db.query(
-            'INSERT INTO productos (codigo, nombre, precio_kg, precio_unidad, precio_libra) VALUES (?, ?, ?, ?, ?)',
-            [codigo, nombre, precio_kg || 0, precio_unidad || 0, precio_libra || 0]
+        const carta = camposCarta(req.body || {});
+        const [result] = await db.query(
+            `INSERT INTO productos (codigo, nombre, precio_kg, precio_unidad, precio_libra, categoria, descripcion, en_menu, disponible)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [codigo, nombre, precio_kg || 0, precio_unidad || 0, precio_libra || 0,
+             carta.categoria ?? null, carta.descripcion ?? null, carta.en_menu ?? 1, carta.disponible ?? 1]
         );
 
         res.status(201).json({ 
@@ -255,10 +280,12 @@ router.put('/:id', async (req, res) => {
             return res.status(400).json({ error: 'El código y nombre son requeridos' });
         }
 
-        const result = await db.query(
-            'UPDATE productos SET codigo = ?, nombre = ?, precio_kg = ?, precio_unidad = ?, precio_libra = ? WHERE id = ?',
-            [codigo, nombre, precio_kg || 0, precio_unidad || 0, precio_libra || 0, req.params.id]
-        );
+        const carta = camposCarta(req.body || {});
+        const sets = ['codigo = ?', 'nombre = ?', 'precio_kg = ?', 'precio_unidad = ?', 'precio_libra = ?'];
+        const vals = [codigo, nombre, precio_kg || 0, precio_unidad || 0, precio_libra || 0];
+        for (const [k, v] of Object.entries(carta)) { sets.push(`${k} = ?`); vals.push(v); }
+        vals.push(req.params.id);
+        const [result] = await db.query(`UPDATE productos SET ${sets.join(', ')} WHERE id = ?`, vals);
 
         if (result.affectedRows === 0) {
             return res.status(404).json({ error: 'Producto no encontrado' });
@@ -277,8 +304,8 @@ router.put('/:id', async (req, res) => {
 // DELETE /productos/:id - Eliminar producto
 router.delete('/:id', async (req, res) => {
     try {
-        const result = await db.query('DELETE FROM productos WHERE id = ?', [req.params.id]);
-        
+        const [result] = await db.query('DELETE FROM productos WHERE id = ?', [req.params.id]);
+
         if (result.affectedRows === 0) {
             return res.status(404).json({ error: 'Producto no encontrado' });
         }
@@ -286,7 +313,47 @@ router.delete('/:id', async (req, res) => {
         res.json({ message: 'Producto eliminado exitosamente' });
     } catch (error) {
         console.error('Error al eliminar producto:', error);
+        if (error.code === 'ER_ROW_IS_REFERENCED_2') {
+            return res.status(400).json({ error: 'No se puede eliminar: el producto tiene ventas o pedidos. Desmárcalo como "Mostrar en el menú" o "Disponible".' });
+        }
         res.status(500).json({ error: 'Error al eliminar producto' });
+    }
+});
+
+// Foto del producto (carta digital). Se guarda en producto_imagenes.
+// Relacionado con: routes/menu.js (GET /menu/img/:id), public/js/productos.js
+const multerImg = require('multer')({
+    storage: require('multer').memoryStorage(),
+    limits: { fileSize: 3 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => cb(null, ['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype))
+});
+
+router.post('/:id(\\d+)/imagen', (req, res) => {
+    multerImg.single('imagen')(req, res, async (err) => {
+        if (err) return res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? 'La foto supera 3 MB' : 'No se pudo leer la foto' });
+        if (!req.file) return res.status(400).json({ error: 'Sube una imagen JPG, PNG o WebP' });
+        try {
+            await db.query(
+                `INSERT INTO producto_imagenes (producto_id, data, tipo) VALUES (?, ?, ?)
+                 ON CONFLICT (producto_id) DO UPDATE SET data = EXCLUDED.data, tipo = EXCLUDED.tipo, updated_at = NOW()`,
+                [req.params.id, req.file.buffer, req.file.mimetype]
+            );
+            res.status(201).json({ ok: true, url: `/menu/img/${req.params.id}` });
+        } catch (e) {
+            if (e.code === 'ER_NO_REFERENCED_ROW_2') return res.status(404).json({ error: 'Producto no encontrado' });
+            console.error('Error al guardar foto del producto:', e);
+            res.status(500).json({ error: 'Error al guardar la foto' });
+        }
+    });
+});
+
+router.delete('/:id(\\d+)/imagen', async (req, res) => {
+    try {
+        await db.query('DELETE FROM producto_imagenes WHERE producto_id = ?', [req.params.id]);
+        res.json({ ok: true });
+    } catch (e) {
+        console.error('Error al quitar foto del producto:', e);
+        res.status(500).json({ error: 'Error al quitar la foto' });
     }
 });
 

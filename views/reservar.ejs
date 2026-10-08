@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1f2933">
+    <title>Reservar · <%= negocio.nombre_negocio || 'Restaurant Martin' %></title>
+    <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/martin.css">
+    <style>
+        body.rm { background: #faf8f5; }
+        .hero { background: linear-gradient(160deg, #1f2933 0%, #2c3e50 100%); color: #fff; padding: 2rem 1rem 4.5rem; text-align: center; }
+        .hero h1 { font-weight: 800; letter-spacing: -.02em; margin: 0; }
+        .form-wrap { max-width: 520px; margin: -3.25rem auto 2rem; padding: 0 1rem; }
+        .pp { display: flex; gap: .4rem; flex-wrap: wrap; }
+        .pp input { display: none; }
+        .pp label { border: 1px solid var(--rm-line); border-radius: 10px; padding: .45rem .8rem; cursor: pointer; font-weight: 600; background: #fff; min-width: 44px; text-align: center; }
+        .pp input:checked + label { background: var(--rm-ink); color: #fff; border-color: var(--rm-ink); }
+        .hp { position: absolute; left: -9999px; }
+    </style>
+</head>
+<body class="rm">
+    <header class="hero">
+        <div class="small text-uppercase opacity-75" style="letter-spacing:.12em;">Reservas</div>
+        <h1 class="h2 mt-1"><%= negocio.nombre_negocio || 'Restaurant Martin' %></h1>
+        <% if (negocio.direccion) { %><div class="small opacity-75 mt-1"><i class="bi bi-geo-alt"></i> <%= negocio.direccion %></div><% } %>
+    </header>
+
+    <div class="form-wrap">
+        <form class="rm-card p-4" id="formReservar" novalidate>
+            <div id="ok" class="text-center d-none py-3">
+                <i class="bi bi-check-circle-fill" style="font-size:3rem;color:var(--rm-ok)"></i>
+                <h2 class="h4 mt-2">¡Solicitud recibida!</h2>
+                <p class="text-muted mb-0">Te contactaremos para confirmar tu reserva.</p>
+            </div>
+            <div id="campos">
+                <label class="form-label fw-semibold">¿Cuántas personas?</label>
+                <div class="pp mb-3">
+                    <% [1,2,3,4,5,6,7,8].forEach(function (n) { %>
+                        <input type="radio" name="personas" id="p<%= n %>" value="<%= n %>" <%= n === 2 ? 'checked' : '' %>><label for="p<%= n %>"><%= n %><%= n === 8 ? '+' : '' %></label>
+                    <% }); %>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-7"><label class="form-label fw-semibold" for="fecha">Fecha</label><input type="date" id="fecha" class="form-control" required></div>
+                    <div class="col-5"><label class="form-label fw-semibold" for="hora">Hora</label><input type="time" id="hora" class="form-control" value="20:00" step="900" required></div>
+                </div>
+                <div class="mb-2"><label class="form-label fw-semibold" for="nombre">Nombre</label><input id="nombre" class="form-control" maxlength="100" autocomplete="name" required></div>
+                <div class="row g-2 mb-2">
+                    <div class="col-6"><label class="form-label fw-semibold" for="telefono">Teléfono</label><input id="telefono" class="form-control" maxlength="30" inputmode="tel" autocomplete="tel"></div>
+                    <div class="col-6"><label class="form-label fw-semibold" for="email">Correo</label><input id="email" type="email" class="form-control" maxlength="120" autocomplete="email"></div>
+                </div>
+                <div class="mb-3"><label class="form-label fw-semibold" for="notas">Comentarios</label><textarea id="notas" class="form-control" rows="2" maxlength="500" placeholder="Ocasión especial, alergias, silla para bebé…"></textarea></div>
+                <input class="hp" id="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+                <div class="alert alert-danger py-2 small d-none" id="error" role="alert"></div>
+                <button class="btn btn-rm w-100 py-3 fw-bold" type="submit" id="btnEnviar"><i class="bi bi-calendar-heart me-1"></i>Solicitar reserva</button>
+                <% if (negocio.telefono) { %><p class="text-center small text-muted mt-3 mb-0">¿Grupo grande? Llámanos al <%= negocio.telefono %></p><% } %>
+            </div>
+        </form>
+    </div>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const pad = (n) => String(n).padStart(2, '0');
+  const d = new Date();
+  $('fecha').min = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  $('fecha').value = $('fecha').min;
+  $('formReservar').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const err = $('error');
+    err.classList.add('d-none');
+    const btn = $('btnEnviar');
+    btn.disabled = true;
+    try {
+      const resp = await fetch('/api/reservar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          personas: document.querySelector('input[name="personas"]:checked').value,
+          fecha_hora: `${$('fecha').value}T${$('hora').value}`,
+          nombre: $('nombre').value, telefono: $('telefono').value, email: $('email').value,
+          notas: $('notas').value, website: $('website').value
+        })
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(data.error || 'No se pudo enviar la reserva');
+      $('campos').classList.add('d-none');
+      $('ok').classList.remove('d-none');
+    } catch (ex) {
+      err.textContent = ex.message;
+      err.classList.remove('d-none');
+    } finally { btn.disabled = false; }
+  });
+})();
+</script>
+</body>
+</html>

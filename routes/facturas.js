@@ -5,6 +5,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { exec } = require('child_process');
+const stripeService = require('../services/stripe');
+const inventarioService = require('../services/inventario');
 
 // Validar rutas de retorno (evitar open-redirect / URLs externas)
 // Se usa para que el botón "Volver" de la impresión regrese a Mesas cuando aplique.
@@ -165,29 +167,43 @@ router.post('/', async (req, res) => {
         return res.status(400).json({ error: 'Total inválido' });
     }
 
-    // Si vienen pagos (pago mixto), validamos y definimos forma_pago compatible
-    const pagosNorm = normalizarPagos(pagos);
-    let formaPagoDB = (forma_pago || 'efectivo');
-    if (pagosNorm.length > 0) {
-        const suma = sumatoriaPagos(pagosNorm);
-        // Solo rechazar si la suma es menor al total (falta dinero)
-        if (suma < Number(totalNum) - 0.01) {
+    // Validación rápida (sin Stripe) antes de abrir la transacción
+    const pagosSinStripe = Array.isArray(pagos) ? pagos.filter(p => String(p?.metodo || '').toLowerCase() !== 'stripe') : pagos;
+    const hayStripe = Array.isArray(pagos) && pagos.length !== pagosSinStripe.length;
+    if (!hayStripe) {
+        const pre = normalizarPagos(pagos);
+        if (pre.length > 0 && sumatoriaPagos(pre) < Number(totalNum) - 0.01) {
             return res.status(400).json({ error: 'La suma de pagos no coincide con el total' });
         }
-        formaPagoDB = pagosNorm.length === 1 ? pagosNorm[0].metodo : 'mixto';
-    } else {
-        // Compatibilidad con flujo anterior (un solo medio)
-        const fp = String(forma_pago || 'efectivo').toLowerCase();
-        formaPagoDB = ['efectivo', 'transferencia', 'tarjeta', 'qr', 'mixto'].includes(fp) ? fp : 'efectivo';
     }
 
     try {
         // Obtener conexión del pool
         const connection = await db.getConnection();
-        
+
         try {
             // Iniciar transacción
             await connection.beginTransaction();
+
+            // Pagos con Stripe: verificados y bloqueados dentro de la transacción
+            // Relacionado con: services/stripe.js (aplicarPagosStripe)
+            const stripeAplicado = await stripeService.aplicarPagosStripe(connection, pagos);
+
+            // Si vienen pagos (pago mixto), validamos y definimos forma_pago compatible
+            const pagosNorm = normalizarPagos(stripeAplicado.pagos);
+            let formaPagoDB = (forma_pago || 'efectivo');
+            if (pagosNorm.length > 0) {
+                const suma = sumatoriaPagos(pagosNorm);
+                // Solo rechazar si la suma es menor al total (falta dinero)
+                if (suma < Number(totalNum) - 0.01) {
+                    throw new stripeService.StripePublicError('La suma de pagos no coincide con el total');
+                }
+                formaPagoDB = pagosNorm.length === 1 ? pagosNorm[0].metodo : 'mixto';
+            } else {
+                // Compatibilidad con flujo anterior (un solo medio)
+                const fp = String(forma_pago || 'efectivo').toLowerCase();
+                formaPagoDB = ['efectivo', 'transferencia', 'tarjeta', 'qr', 'mixto'].includes(fp) ? fp : 'efectivo';
+            }
 
             // Insertar factura
             const [result] = await connection.query(
@@ -232,6 +248,10 @@ router.post('/', async (req, res) => {
                 // Si la tabla no existe (instalación vieja), no rompemos la creación de factura
             }
 
+            await stripeService.marcarUsados(connection, stripeAplicado.ids, factura_id);
+            // Inventario: descuento de insumos por receta
+            await inventarioService.descontarPorFactura(connection, factura_id, req.session?.user?.usuario || null);
+
             // Confirmar transacción
             await connection.commit();
             
@@ -250,6 +270,7 @@ router.post('/', async (req, res) => {
 
     } catch (error) {
         console.error('Error al crear factura:', error);
+        if (error && error.publico) return res.status(400).json({ error: error.message });
         res.status(500).json({ error: 'Error al crear factura' });
     }
 });

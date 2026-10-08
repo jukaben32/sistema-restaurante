@@ -124,6 +124,25 @@
 <body>
     <div class="no-print" style="text-align: center; margin-bottom: 20px;">
         <button onclick="window.print()" class="print-button">Imprimir Factura</button>
+        <%
+            // Factura por WhatsApp (sin papel): abre wa.me con el resumen al teléfono del cliente
+            // Relacionado con: routes/facturas.js (GET /:id/imprimir incluye c.telefono)
+            let waTel = String(factura.telefono || '').replace(/[^\d]/g, '');
+            const waCodigo = String((typeof codigoPaisWhatsapp !== 'undefined' && codigoPaisWhatsapp) || '').replace(/[^\d]/g, '');
+            if (waTel.length === 10 && waCodigo && !waTel.startsWith(waCodigo)) waTel = waCodigo + waTel;
+            const waLineas = (detalles || []).map(function (it) {
+                return '• ' + Number(it.cantidad).toLocaleString('es-CO', { maximumFractionDigits: 2 }) + ' ' + it.producto_nombre + ' — $' + Number(it.subtotal).toLocaleString('es-CO');
+            });
+            const waTexto = [
+                '*' + (config.nombre_negocio || 'Restaurant Martin') + '*',
+                'Factura #' + factura.id + ' · ' + new Date(factura.fecha).toLocaleDateString('es-CO'),
+                ''
+            ].concat(waLineas).concat(['', '*Total: $' + Number(factura.total).toLocaleString('es-CO') + '*', '', config.pie_pagina || '¡Gracias por tu visita!']).join('\n');
+            const waUrl = 'https://wa.me/' + (waTel.length >= 10 ? waTel : '') + '?text=' + encodeURIComponent(waTexto);
+        %>
+        <a href="<%= waUrl %>" target="_blank" rel="noopener" class="print-button" style="background:#25d366;text-decoration:none;display:inline-block;">
+            WhatsApp<%= waTel.length >= 10 ? '' : ' (elegir contacto)' %>
+        </a>
         <!-- Botón Volver: solo se muestra en pantalla completa (no en iframe/modal) -->
         <!-- Relacionado con: routes/facturas.js (embed=1 cuando se abre desde index/ventas) -->
         <% if (!(typeof embed !== 'undefined' && embed)) { %>

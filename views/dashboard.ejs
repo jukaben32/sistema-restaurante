@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('partials/head') %>
+    <title>Dashboard · Restaurant Martin</title>
+    <style>
+        .hero-num { font-size: 3rem; font-weight: 700; letter-spacing: -.02em; line-height: 1.05; }
+        .mini { display: flex; justify-content: space-between; padding: .4rem 0; border-bottom: 1px dashed var(--rm-line); font-size: .92rem; }
+        .mini:last-child { border-bottom: 0; }
+        #refresco { transition: opacity .2s; }
+        .cargando { opacity: .55; }
+    </style>
+</head>
+<body class="rm">
+    <%- include('partials/navbar') %>
+    <main class="rm-page container pb-5">
+        <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+            <div>
+                <h1 class="rm-title h3">Hoy en el restaurante</h1>
+                <p class="rm-sub" id="subtitulo">Se actualiza cada 30 segundos.</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-outline-secondary btn-sm" href="/mesas"><i class="bi bi-grid"></i> Mesas</a>
+                <a class="btn btn-outline-secondary btn-sm" href="/reservas"><i class="bi bi-calendar-check"></i> Reservas</a>
+                <a class="btn btn-outline-secondary btn-sm" href="/inventario"><i class="bi bi-box-seam"></i> Inventario</a>
+                <a class="btn btn-outline-secondary btn-sm" href="/ventas"><i class="bi bi-receipt"></i> Ventas</a>
+            </div>
+        </div>
+
+        <div id="refresco">
+            <!-- Cifra principal + KPIs -->
+            <div class="row g-3 mb-3">
+                <div class="col-lg-5">
+                    <div class="rm-card rm-kpi h-100">
+                        <div class="lbl">Ventas de hoy</div>
+                        <div class="hero-num num text-start" id="kVentas">—</div>
+                        <div class="delta" id="kVentasDelta"></div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-2"><div class="rm-card rm-kpi h-100"><div class="lbl">Facturas</div><div class="val" id="kFacturas">—</div><div class="delta" id="kFacturasDelta"></div></div></div>
+                <div class="col-6 col-lg-2"><div class="rm-card rm-kpi h-100"><div class="lbl">Ticket promedio</div><div class="val" id="kTicket">—</div><div class="delta" id="kTicketDelta"></div></div></div>
+                <div class="col-12 col-lg-3"><div class="rm-card rm-kpi h-100"><div class="lbl">Cobrado con Stripe hoy</div><div class="val" id="kStripe">—</div><div class="delta flat" id="kStripeN"></div></div></div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-lg-8">
+                    <div class="rm-card h-100">
+                        <div class="rm-card-h"><h2>Ventas de los últimos 7 días</h2>
+                            <button class="btn btn-sm btn-link ms-auto p-0" id="toggleTabla" type="button" aria-expanded="false" aria-controls="tablaSemana">Ver tabla</button>
+                        </div>
+                        <div class="rm-card-b">
+                            <div class="rm-bars" id="chartSemana" role="img" aria-label="Ventas de los últimos 7 días"></div>
+                            <div class="rm-xaxis" id="ejeSemana" aria-hidden="true"></div>
+                            <table class="table table-sm rm-table mt-3 d-none" id="tablaSemana">
+                                <thead><tr><th>Día</th><th class="text-end">Facturas</th><th class="text-end">Ventas</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="rm-card h-100">
+                        <div class="rm-card-h"><h2>Más vendidos · 7 días</h2></div>
+                        <div class="rm-card-b"><ul class="rm-rank" id="top"></ul></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-md-6 col-lg-3">
+                    <div class="rm-card h-100">
+                        <div class="rm-card-h"><i class="bi bi-grid"></i><h2>Mesas</h2><span class="ms-auto rm-chip accent d-none" id="chipAlertas"></span></div>
+                        <div class="rm-card-b" id="mesas"></div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="rm-card h-100">
+                        <div class="rm-card-h"><i class="bi bi-egg-fried"></i><h2>Cocina</h2></div>
+                        <div class="rm-card-b" id="cocina"></div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="rm-card h-100">
+                        <div class="rm-card-h"><i class="bi bi-calendar-check"></i><h2>Reservas de hoy</h2></div>
+                        <div class="rm-card-b" id="reservas"></div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="rm-card h-100">
+                        <div class="rm-card-h"><i class="bi bi-box-seam"></i><h2>Stock bajo</h2></div>
+                        <div class="rm-card-b" id="stock"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rm-card mt-3">
+                <div class="rm-card-h"><i class="bi bi-wallet2"></i><h2>Cobrado hoy por medio de pago</h2></div>
+                <div class="rm-card-b" id="metodos"></div>
+            </div>
+        </div>
+    </main>
+    <%- include('partials/footer') %>
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/dashboard.js"></script>
+    <script src="/js/alertas-mesas.js"></script>
+</body>
+</html>
