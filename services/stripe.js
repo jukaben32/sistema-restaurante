@@ -50,7 +50,7 @@ async function getStripeConfig() {
         publishableKey: c.stripe_publishable_key || null,
         secretKey,
         webhookSecret,
-        moneda: String(c.moneda || 'usd').toLowerCase(),
+        moneda: String(c.moneda || 'dop').toLowerCase(),
         appUrlPublica: c.app_url_publica || null,
         nombreNegocio: c.nombre_negocio || 'Restaurante',
         modoPrueba: secretKey ? secretKey.startsWith('sk_test_') : false
@@ -64,7 +64,7 @@ async function saveStripeConfig({ habilitado, publishableKey, secretKey, webhook
         await db.query(`INSERT INTO configuracion_impresion (nombre_negocio) VALUES ('Restaurant Martin')`);
     }
     const sets = ['stripe_habilitado = ?', 'stripe_publishable_key = ?', 'moneda = ?', 'app_url_publica = ?'];
-    const vals = [habilitado ? 1 : 0, publishableKey || null, String(moneda || 'usd').toLowerCase().slice(0, 3), appUrlPublica || null];
+    const vals = [habilitado ? 1 : 0, publishableKey || null, String(moneda || 'dop').toLowerCase().slice(0, 3), appUrlPublica || null];
     if (secretKey) { sets.push('stripe_secret_key_enc = ?'); vals.push(encrypt(secretKey)); }
     if (webhookSecret) { sets.push('stripe_webhook_secret_enc = ?'); vals.push(encrypt(webhookSecret)); }
     await db.query(
@@ -96,7 +96,7 @@ async function probarConexion() {
  * Crea un cobro (Checkout Session) y devuelve URL + QR para que el cliente pague desde su celular.
  * baseUrl: URL con la que el cliente vuelve al terminar (config app_url_publica o el host actual).
  */
-async function crearCobro({ monto, pedidoId = null, descripcion, baseUrl, usuario = null }) {
+async function crearCobro({ monto, pedidoId = null, descripcion, baseUrl, usuario = null, expiraMin = 31 }) {
     const cfg = await getStripeConfig();
     if (!cfg.habilitado) throw new StripePublicError('Los pagos con Stripe no están habilitados (Configuración → Stripe)');
     const montoNum = Number(monto);
@@ -116,8 +116,8 @@ async function crearCobro({ monto, pedidoId = null, descripcion, baseUrl, usuari
         }],
         success_url: `${base}/pago/estado?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${base}/pago/estado?session_id={CHECKOUT_SESSION_ID}&cancelado=1`,
-        // Mínimo permitido por Stripe: 30 minutos
-        expires_at: Math.floor(Date.now() / 1000) + 31 * 60,
+        // Stripe permite entre 30 minutos y 24 horas (el delivery usa un enlace de más duración)
+        expires_at: Math.floor(Date.now() / 1000) + Math.min(1440, Math.max(31, Number(expiraMin) || 31)) * 60,
         metadata: { origen: 'restaurant-martin-pos', pedido_id: pedidoId ? String(pedidoId) : '' }
     });
 
@@ -135,11 +135,21 @@ async function actualizarDesdeSesion(session) {
     if (!session || !session.id) return;
     const pagado = session.payment_status === 'paid' || session.payment_status === 'no_payment_required';
     if (pagado) {
-        await db.query(
+        const [upd] = await db.query(
             `UPDATE stripe_pagos SET estado = 'pagado', payment_intent = COALESCE(?, payment_intent)
              WHERE session_id = ? AND estado IN ('pendiente','expirado')`,
             [typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id || null, session.id]
         );
+        // Pago de un pedido de delivery / para llevar: avisar al personal (una sola vez)
+        if (upd.affectedRows > 0) {
+            await db.query(
+                `INSERT INTO mesa_alertas (pedido_id, tipo, mensaje)
+                 SELECT p.id, 'pago_recibido', 'Pago con Stripe confirmado'
+                 FROM stripe_pagos sp JOIN pedidos p ON p.id = sp.pedido_id
+                 WHERE sp.session_id = ? AND p.tipo <> 'mesa'`,
+                [session.id]
+            ).catch((e) => console.error('No se pudo registrar el aviso de pago:', e.message));
+        }
     } else if (session.status === 'expired') {
         await db.query(`UPDATE stripe_pagos SET estado = 'expirado' WHERE session_id = ? AND estado = 'pendiente'`, [session.id]);
     }

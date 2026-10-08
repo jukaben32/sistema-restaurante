@@ -22,7 +22,7 @@ const { Pool, types } = require('pg');
 types.setTypeParser(20, (v) => (v === null ? null : Number(v)));     // int8 (COUNT, SUM de enteros)
 types.setTypeParser(1700, (v) => (v === null ? null : parseFloat(v))); // numeric/decimal
 
-const TIMEZONE = process.env.DB_TIMEZONE || 'America/Bogota';
+const TIMEZONE = process.env.DB_TIMEZONE || 'America/Santo_Domingo';
 
 if (!process.env.DATABASE_URL) {
     console.error('Falta DATABASE_URL en el archivo .env (ver .env.example).');
@@ -62,7 +62,7 @@ pool.on('error', (err) => {
 });
 
 // Tablas sin columna "id" (no se les agrega RETURNING id en INSERT)
-const TABLES_WITHOUT_ID = new Set(['producto_hijos', 'recetas', 'producto_imagenes']);
+const TABLES_WITHOUT_ID = new Set(['producto_hijos', 'recetas', 'producto_imagenes', 'horarios']);
 
 /**
  * Traduce una sentencia con placeholders "?" (estilo mysql2) a "$n" de PostgreSQL.

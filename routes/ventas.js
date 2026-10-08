@@ -117,7 +117,7 @@ async function getProductosMasVendidos(queryParams) {
         JOIN facturas  f ON f.id = df.factura_id
         JOIN clientes  c ON f.cliente_id = c.id
         JOIN productos p ON p.id = df.producto_id
-        ${whereSql}
+        ${whereSql ? whereSql + " AND p.codigo <> 'ENVIO'" : "WHERE p.codigo <> 'ENVIO'"}
         GROUP BY p.id, p.nombre
         ORDER BY total_cantidad DESC
         LIMIT 10

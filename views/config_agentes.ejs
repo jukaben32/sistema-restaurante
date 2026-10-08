@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('partials/head') %>
+    <title>Agentes y delivery · Restaurant Martin</title>
+    <style>
+        .fila { display: grid; gap: .5rem; align-items: center; padding: .5rem 0; border-bottom: 1px dashed var(--rm-line); }
+        .fila:last-child { border-bottom: 0; }
+        .fila-dia { grid-template-columns: 110px 1fr 1fr auto auto; }
+        .fila-zona { grid-template-columns: 1.6fr 1fr 1fr auto auto; }
+        @media (max-width: 640px) {
+            .fila-dia, .fila-zona { grid-template-columns: 1fr 1fr; }
+            .fila-dia > :first-child, .fila-zona > :first-child { grid-column: 1 / -1; }
+        }
+        .guardar { position: sticky; bottom: 0; background: linear-gradient(to top, var(--rm-bg) 70%, rgba(245,246,248,0)); padding: 1rem 0 .75rem; z-index: 5; }
+    </style>
+</head>
+<body class="rm">
+    <%- include('partials/navbar') %>
+    <main class="rm-page container pb-4" style="max-width: 920px;">
+        <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+            <div>
+                <h1 class="rm-title h3"><i class="bi bi-robot me-2" style="color:var(--rm-accent)"></i>Delivery y agentes</h1>
+                <p class="rm-sub">Esta información la usan el delivery y los asistentes de llamadas y WhatsApp para responder a tus clientes. Si algo no está aquí, el asistente dirá que no lo sabe en lugar de inventarlo.</p>
+            </div>
+            <a href="/configuracion" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Configuración</a>
+        </div>
+
+        <div id="cargando" class="rm-empty"><span class="rm-pulse"></span>Cargando…</div>
+
+        <form id="form" class="d-none" autocomplete="off">
+            <!-- Delivery -->
+            <div class="rm-card mb-3">
+                <div class="rm-card-h"><i class="bi bi-bicycle"></i><h2>Delivery</h2></div>
+                <div class="rm-card-b">
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" role="switch" id="deliveryActivo">
+                        <label class="form-check-label fw-semibold" for="deliveryActivo">Aceptar pedidos de delivery de clientes (agentes)</label>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-sm-6"><label class="form-label small" for="minimo">Pedido mínimo para delivery (sin contar envío)</label><input id="minimo" type="number" min="0" step="0.01" class="form-control"></div>
+                        <div class="col-sm-6"><label class="form-label small" for="prep">Tiempo de preparación (minutos)</label><input id="prep" type="number" min="1" max="180" class="form-control"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Zonas -->
+            <div class="rm-card mb-3">
+                <div class="rm-card-h"><i class="bi bi-geo-alt"></i><h2>Zonas de entrega y costo de envío</h2>
+                    <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" id="addZona"><i class="bi bi-plus-lg"></i> Agregar zona</button></div>
+                <div class="rm-card-b">
+                    <p class="small text-muted mb-2">Ejemplos: Bávaro, Cap Cana, Punta Cana Village, Uvero Alto. Los minutos se suman al tiempo de preparación.</p>
+                    <div class="fila fila-zona small text-muted fw-semibold d-none d-sm-grid"><span>Zona</span><span>Costo de envío</span><span>Minutos</span><span>Activa</span><span></span></div>
+                    <div id="zonas"></div>
+                </div>
+            </div>
+
+            <!-- Horario -->
+            <div class="rm-card mb-3">
+                <div class="rm-card-h"><i class="bi bi-clock"></i><h2>Horario</h2></div>
+                <div class="rm-card-b">
+                    <p class="small text-muted mb-2">Si cierras después de medianoche, escribe la hora normal (ej. abre 11:00, cierra 01:00).</p>
+                    <div id="dias"></div>
+                </div>
+            </div>
+
+            <!-- Pagos y atención -->
+            <div class="rm-card mb-3">
+                <div class="rm-card-h"><i class="bi bi-bank"></i><h2>Pagos y atención humana</h2></div>
+                <div class="rm-card-b">
+                    <div class="mb-3">
+                        <label class="form-label small" for="transf">Datos para transferencias</label>
+                        <textarea id="transf" class="form-control" rows="3" maxlength="1000" placeholder="Banco Popular · Cuenta corriente 123456789 · Restaurant Martin SRL · RNC 1-23-45678-9"></textarea>
+                        <div class="form-text">El asistente los envía al cliente que elige pagar por transferencia.</div>
+                    </div>
+                    <div>
+                        <label class="form-label small" for="humano">Teléfono para pasar con una persona</label>
+                        <input id="humano" class="form-control" maxlength="30" inputmode="tel" placeholder="809 555 1234">
+                        <div class="form-text">A este número se transfieren las llamadas cuando el cliente pide hablar con alguien.</div>
+                    </div>
+                    <p class="small text-muted mt-3 mb-0">Nombre, dirección y teléfono del restaurante: <span id="infoNegocio"></span> (se editan en <a href="/configuracion">Configuración</a>).</p>
+                </div>
+            </div>
+
+            <!-- FAQ -->
+            <div class="rm-card mb-3">
+                <div class="rm-card-h"><i class="bi bi-question-circle"></i><h2>Preguntas frecuentes</h2>
+                    <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" id="addFaq"><i class="bi bi-plus-lg"></i> Agregar</button></div>
+                <div class="rm-card-b">
+                    <p class="small text-muted mb-2">Parqueo, mascotas, menú infantil, opciones vegetarianas, métodos de pago en el local, eventos…</p>
+                    <div id="faq" class="vstack gap-2"></div>
+                </div>
+            </div>
+
+            <div class="guardar d-flex align-items-center gap-3">
+                <button class="btn btn-rm px-4" type="submit" id="btnGuardar"><i class="bi bi-save"></i> Guardar cambios</button>
+                <span class="small text-muted" id="estado"></span>
+            </div>
+        </form>
+    </main>
+    <%- include('partials/footer') %>
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
+    <script src="/js/config-agentes.js"></script>
+</body>
+</html>

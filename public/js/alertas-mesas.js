@@ -11,7 +11,11 @@
   const TIPOS = {
     llamar_mesero: { icon: 'bi-bell-fill', txt: 'llama al mesero' },
     pedir_cuenta: { icon: 'bi-receipt', txt: 'pide la cuenta' },
-    nuevo_pedido: { icon: 'bi-bag-check-fill', txt: 'hizo un pedido desde el menú' }
+    nuevo_pedido: { icon: 'bi-bag-check-fill', txt: 'hizo un pedido desde el menú' },
+    pedido_delivery: { icon: 'bi-bicycle', txt: 'nuevo pedido por confirmar' },
+    pago_recibido: { icon: 'bi-credit-card-2-front', txt: 'pago confirmado' },
+    comprobante: { icon: 'bi-bank', txt: 'envió un comprobante de transferencia' },
+    handoff: { icon: 'bi-headset', txt: 'pide hablar con una persona' }
   };
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -52,8 +56,9 @@
       }
       el.innerHTML = `
         <div class="ic"><i class="bi ${t.icon}"></i></div>
-        <div class="tx"><b>Mesa ${esc(a.mesa_numero)}</b> ${t.txt}
+        <div class="tx"><b>${a.es_pedido ? esc(a.mesa_numero) : `Mesa ${esc(a.mesa_numero)}`}</b> ${t.txt}
           ${a.mensaje ? `<small>${esc(a.mensaje)}</small>` : ''}<small>${hace(a.created_at)}</small></div>
+        ${a.es_pedido && !/\/delivery$/.test(location.pathname) ? '<a class="btn btn-sm btn-outline-light" href="/delivery">Ver</a>' : ''}
         <button class="btn btn-sm btn-light" data-atender="${a.id}">Atender</button>`;
     });
     if (nuevos > 0 && !primeraCarga) beep();

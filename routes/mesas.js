@@ -5,8 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { exec } = require('child_process');
-const stripeService = require('../services/stripe');
-const inventarioService = require('../services/inventario');
+const facturacionService = require('../services/facturacion');
 
 // Rutas para gestión de mesas y pedidos de restaurante
 // - Renderiza la vista de mesas (GET /mesas)
@@ -484,9 +483,9 @@ router.get('/pedidos/:pedidoId/comanda', async (req, res) => {
         const config = cfgRows?.[0] || { nombre_negocio: 'Comanda', direccion: '', telefono: '', ancho_papel: 80, font_size: 1 };
 
         const [pedidos] = await db.query(
-            `SELECT p.*, m.numero AS mesa_numero
+            `SELECT p.*, COALESCE(m.numero, CASE p.tipo WHEN 'delivery' THEN 'DEL-' ELSE 'LLEVAR-' END || p.id) AS mesa_numero
              FROM pedidos p
-             JOIN mesas m ON m.id = p.mesa_id
+             LEFT JOIN mesas m ON m.id = p.mesa_id
              WHERE p.id = ?
              LIMIT 1`,
             [pedidoId]
@@ -583,9 +582,9 @@ router.post('/pedidos/:pedidoId/comanda/imprimir-servidor', async (req, res) => 
         const fontSize    = Number(cfg?.font_size   || 1);
 
         const [pedidos] = await db.query(
-            `SELECT p.*, m.numero AS mesa_numero
+            `SELECT p.*, COALESCE(m.numero, CASE p.tipo WHEN 'delivery' THEN 'DEL-' ELSE 'LLEVAR-' END || p.id) AS mesa_numero
              FROM pedidos p
-             JOIN mesas m ON m.id = p.mesa_id
+             LEFT JOIN mesas m ON m.id = p.mesa_id
              WHERE p.id = ?
              LIMIT 1`,
             [pedidoId]
@@ -1054,122 +1053,40 @@ router.put('/items/:itemId/estado', async (req, res) => {
 });
 
 // POST /mesas/pedidos/:pedidoId/facturar - API: genera factura desde pedido y cierra mesa
+// La lógica de facturación vive en services/facturacion.js (la comparten Mesas y Delivery).
 router.post('/pedidos/:pedidoId/facturar', async (req, res) => {
-    const pedidoId = req.params.pedidoId;
     const { cliente_id, forma_pago, pagos } = req.body || {};
     if (!cliente_id) return res.status(400).json({ error: 'cliente_id requerido para facturar' });
-    // forma_pago se mantiene por compatibilidad, pero lo recomendado es enviar pagos[] (pago mixto)
+    let connection;
     try {
-        const connection = await db.getConnection();
-        try {
-            await connection.beginTransaction();
+        connection = await db.getConnection();
+        await connection.beginTransaction();
 
-            const [pedidos] = await connection.query('SELECT * FROM pedidos WHERE id = ? FOR UPDATE', [pedidoId]);
-            if (pedidos.length === 0) throw new Error('Pedido no encontrado');
-            const pedido = pedidos[0];
+        const { facturaId, pedido } = await facturacionService.facturarPedido(connection, {
+            pedidoId: req.params.pedidoId,
+            clienteId: cliente_id,
+            formaPago: forma_pago,
+            pagos,
+            usuario: req.session?.user?.usuario || null
+        });
 
-            const [items] = await connection.query(
-                // Excluir items cancelados o rechazados de la factura
-                // Relacionado con: estado "rechazado" (database.sql)
-                `SELECT * FROM pedido_items WHERE pedido_id = ? AND estado NOT IN ('cancelado','rechazado')`,
-                [pedidoId]
-            );
-            if (items.length === 0) throw new Error('Pedido sin items');
-
-            const total = items.reduce((acc, it) => acc + Number(it.subtotal || 0), 0);
-
-            // ===== Pago mixto: validar pagos[] si se envía =====
-            // Relacionado con: public/js/mesas.js (modal de pagos)
-            const normalizarPagos = (arr) => {
-                if (!Array.isArray(arr)) return [];
-                return arr
-                    .filter(p => p && typeof p === 'object')
-                    .map(p => ({
-                        metodo: String(p.metodo || '').toLowerCase().trim(),
-                        monto: Number(p.monto || 0),
-                        referencia: (p.referencia != null && String(p.referencia).trim() !== '') ? String(p.referencia).trim() : null
-                    }))
-                    .filter(p => ['efectivo', 'transferencia', 'tarjeta', 'qr'].includes(p.metodo) && Number.isFinite(p.monto) && p.monto > 0);
-            };
-            // Pagos con Stripe: se verifican contra Stripe y se convierten en pagos de tarjeta
-            // Relacionado con: services/stripe.js (aplicarPagosStripe)
-            const stripeAplicado = await stripeService.aplicarPagosStripe(connection, pagos);
-            const pagosNorm = normalizarPagos(stripeAplicado.pagos);
-            const sumaPagos = pagosNorm.reduce((acc, p) => acc + Number(p.monto || 0), 0);
-
-            let formaPagoDB = String(forma_pago || 'efectivo').toLowerCase();
-            if (pagosNorm.length > 0) {
-                // Solo rechazar si la suma es menor al total (falta dinero)
-                if (sumaPagos < Number(total) - 0.01) {
-                    throw new Error('La suma de pagos no coincide con el total');
-                }
-                formaPagoDB = (pagosNorm.length === 1) ? pagosNorm[0].metodo : 'mixto';
-            } else {
-                // Compatibilidad: si no envían pagos, usamos forma_pago (y creamos 1 registro en factura_pagos)
-                if (!['efectivo', 'transferencia', 'tarjeta', 'qr', 'mixto'].includes(formaPagoDB)) formaPagoDB = 'efectivo';
-            }
-
-            const [facturaInsert] = await connection.query(
-                `INSERT INTO facturas (cliente_id, total, forma_pago) VALUES (?, ?, ?)`,
-                [cliente_id, total, formaPagoDB]
-            );
-            const facturaId = facturaInsert.insertId;
-
-            const detallesValues = items.map(i => [
-                facturaId,
-                i.producto_id,
-                i.cantidad,
-                i.precio_unitario,
-                i.unidad_medida,
-                i.subtotal
-            ]);
-            await connection.query(
-                `INSERT INTO detalle_factura (factura_id, producto_id, cantidad, precio_unitario, unidad_medida, subtotal) VALUES ?`,
-                [detallesValues]
-            );
-
-            // Guardar pagos en factura_pagos (si existe la tabla)
-            try {
-                if (pagosNorm.length > 0) {
-                    const pagosValues = pagosNorm.map(p => ([facturaId, p.metodo, p.monto, p.referencia]));
-                    await connection.query(
-                        'INSERT INTO factura_pagos (factura_id, metodo, monto, referencia) VALUES ?',
-                        [pagosValues]
-                    );
-                } else {
-                    await connection.query(
-                        'INSERT INTO factura_pagos (factura_id, metodo, monto, referencia) VALUES (?, ?, ?, ?)',
-                        [facturaId, (formaPagoDB === 'mixto' ? 'efectivo' : formaPagoDB), total, null]
-                    );
-                }
-            } catch (_) {
-                // Si la tabla no existe, no rompemos la facturación
-            }
-
-            await stripeService.marcarUsados(connection, stripeAplicado.ids, facturaId);
-            // Inventario: descuento de insumos por receta
-            await inventarioService.descontarPorFactura(connection, facturaId, req.session?.user?.usuario || null);
-
-            await connection.query(`UPDATE pedidos SET estado = 'cerrado', total = ? WHERE id = ?`, [total, pedidoId]);
+        if (pedido.mesa_id) {
             await connection.query(`UPDATE mesas SET estado = 'libre' WHERE id = ?`, [pedido.mesa_id]);
             // Avisos del menú QR de esta mesa quedan atendidos al cerrar la cuenta
             await connection.query(
                 `UPDATE mesa_alertas SET atendida = 1, atendida_at = NOW() WHERE mesa_id = ? AND atendida = 0`,
                 [pedido.mesa_id]
             );
-
-            await connection.commit();
-            connection.release();
-            res.status(201).json({ factura_id: facturaId });
-        } catch (error) {
-            await connection.rollback();
-            connection.release();
-            console.error('Error en facturación desde pedido:', error);
-            res.status(error && error.publico ? 400 : 500).json({ error: error && error.publico ? error.message : 'Error al facturar pedido' });
         }
+
+        await connection.commit();
+        res.status(201).json({ factura_id: facturaId });
     } catch (error) {
-        console.error('Error al preparar facturación:', error);
-        res.status(500).json({ error: 'Error interno' });
+        if (connection) await connection.rollback().catch(() => {});
+        console.error('Error en facturación desde pedido:', error);
+        res.status(error && error.publico ? 400 : 500).json({ error: error && error.publico ? error.message : 'Error al facturar pedido' });
+    } finally {
+        if (connection) connection.release();
     }
 });
 

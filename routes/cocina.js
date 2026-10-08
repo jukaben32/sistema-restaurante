@@ -11,11 +11,13 @@ const { requireRole } = require('../middleware/auth');
 router.get('/', requireRole(['cocinero', 'mesero', 'administrador']), async (req, res) => {
     try {
         const [items] = await db.query(`
-            SELECT i.*, p.mesa_id, p.mesero_nombre, m.numero AS mesa_numero, pr.nombre AS producto_nombre
+            SELECT i.*, p.mesa_id, p.tipo, p.mesero_nombre,
+                   COALESCE(m.numero, CASE p.tipo WHEN 'delivery' THEN 'DEL-' ELSE 'LLEVAR-' END || p.id) AS mesa_numero,
+                   pr.nombre AS producto_nombre
             FROM pedido_items i
             JOIN pedidos p ON p.id = i.pedido_id
-            JOIN mesas m ON m.id = p.mesa_id
-            JOIN productos pr ON pr.id = i.producto_id
+            LEFT JOIN mesas m ON m.id = p.mesa_id
+            JOIN productos pr ON pr.id = i.producto_id AND pr.codigo <> 'ENVIO'
             WHERE i.estado IN ('enviado','preparando','listo')
             ORDER BY COALESCE(i.enviado_at, i.created_at) ASC, i.id ASC
         `);
@@ -31,11 +33,13 @@ router.get('/', requireRole(['cocinero', 'mesero', 'administrador']), async (req
 router.get('/cola', requireRole(['cocinero', 'mesero', 'administrador']), async (req, res) => {
     try {
         const [items] = await db.query(`
-            SELECT i.*, p.mesa_id, p.mesero_nombre, m.numero AS mesa_numero, pr.nombre AS producto_nombre
+            SELECT i.*, p.mesa_id, p.tipo, p.mesero_nombre,
+                   COALESCE(m.numero, CASE p.tipo WHEN 'delivery' THEN 'DEL-' ELSE 'LLEVAR-' END || p.id) AS mesa_numero,
+                   pr.nombre AS producto_nombre
             FROM pedido_items i
             JOIN pedidos p ON p.id = i.pedido_id
-            JOIN mesas m ON m.id = p.mesa_id
-            JOIN productos pr ON pr.id = i.producto_id
+            LEFT JOIN mesas m ON m.id = p.mesa_id
+            JOIN productos pr ON pr.id = i.producto_id AND pr.codigo <> 'ENVIO'
             WHERE i.estado IN ('enviado','preparando','listo')
             ORDER BY COALESCE(i.enviado_at, i.created_at) ASC, i.id ASC
         `);
@@ -76,11 +80,13 @@ router.get('/entregados', requireRole(['cocinero', 'mesero', 'administrador']), 
         }
 
         const [items] = await db.query(`
-            SELECT i.*, p.mesa_id, p.mesero_nombre, m.numero AS mesa_numero, pr.nombre AS producto_nombre
+            SELECT i.*, p.mesa_id, p.tipo, p.mesero_nombre,
+                   COALESCE(m.numero, CASE p.tipo WHEN 'delivery' THEN 'DEL-' ELSE 'LLEVAR-' END || p.id) AS mesa_numero,
+                   pr.nombre AS producto_nombre
             FROM pedido_items i
             JOIN pedidos p ON p.id = i.pedido_id
-            JOIN mesas m ON m.id = p.mesa_id
-            JOIN productos pr ON pr.id = i.producto_id
+            LEFT JOIN mesas m ON m.id = p.mesa_id
+            JOIN productos pr ON pr.id = i.producto_id AND pr.codigo <> 'ENVIO'
             WHERE ${where.join(' AND ')}
             ORDER BY COALESCE(i.servido_at, i.updated_at, i.created_at) DESC, i.id DESC
             LIMIT 500
@@ -125,11 +131,13 @@ router.get('/rechazados', requireRole(['cocinero', 'mesero', 'administrador']), 
         }
 
         const [items] = await db.query(`
-            SELECT i.*, p.mesa_id, p.mesero_nombre, m.numero AS mesa_numero, pr.nombre AS producto_nombre
+            SELECT i.*, p.mesa_id, p.tipo, p.mesero_nombre,
+                   COALESCE(m.numero, CASE p.tipo WHEN 'delivery' THEN 'DEL-' ELSE 'LLEVAR-' END || p.id) AS mesa_numero,
+                   pr.nombre AS producto_nombre
             FROM pedido_items i
             JOIN pedidos p ON p.id = i.pedido_id
-            JOIN mesas m ON m.id = p.mesa_id
-            JOIN productos pr ON pr.id = i.producto_id
+            LEFT JOIN mesas m ON m.id = p.mesa_id
+            JOIN productos pr ON pr.id = i.producto_id AND pr.codigo <> 'ENVIO'
             WHERE ${where.join(' AND ')}
             ORDER BY COALESCE(i.updated_at, i.created_at) DESC, i.id DESC
             LIMIT 500
@@ -220,6 +228,30 @@ router.put('/item/:id/rechazar', requireRole(['cocinero', 'administrador']), asy
     } catch (error) {
         console.error('Error al rechazar item en cocina:', error);
         res.status(500).json({ error: 'Error al rechazar item' });
+    }
+});
+
+// PUT /cocina/pedido/:pedidoId/preparar - Prepara todos los items enviados de UN pedido
+// (delivery / para llevar: no tienen mesa). Relacionado con: public/js/cocina.js (data-pedido-id)
+router.put('/pedido/:pedidoId/preparar', requireRole(['cocinero', 'administrador']), async (req, res) => {
+    try {
+        const pedidoId = Number(req.params.pedidoId);
+        if (!Number.isInteger(pedidoId) || pedidoId <= 0) {
+            return res.status(400).json({ error: 'Pedido inválido' });
+        }
+        const [result] = await db.query(
+            `UPDATE pedido_items
+             SET estado = 'preparando', preparado_at = NOW()
+             WHERE pedido_id = ? AND estado = 'enviado'`,
+            [pedidoId]
+        );
+        if ((result?.affectedRows || 0) === 0) {
+            return res.status(404).json({ error: 'No hay items enviados para preparar en este pedido' });
+        }
+        res.json({ message: 'Pedido enviado a preparación', actualizados: result.affectedRows });
+    } catch (error) {
+        console.error('Error al preparar pedido en cocina:', error);
+        res.status(500).json({ error: 'Error al preparar pedido' });
     }
 });
 

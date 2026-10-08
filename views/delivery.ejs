@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('partials/head') %>
+    <title>Delivery · Restaurant Martin</title>
+    <style>
+        .tablero { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(290px, 1fr); gap: .8rem; overflow-x: auto; padding-bottom: .75rem; scroll-snap-type: x proximity; }
+        .col-d { scroll-snap-align: start; min-width: 0; }
+        .col-d h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--rm-muted); font-weight: 700; display: flex; align-items: center; gap: .4rem; margin: 0 0 .5rem; }
+        .col-d h2 .n { background: #e8ebf0; color: var(--rm-ink); border-radius: 99px; padding: 0 .5rem; font-size: .75rem; }
+        .col-d.alerta h2 .n { background: var(--rm-accent); color: #fff; }
+        .pcard { background: #fff; border: 1px solid var(--rm-line); border-radius: 14px; padding: .8rem .9rem; margin-bottom: .6rem; box-shadow: var(--rm-shadow); }
+        .pcard .cod { font-weight: 800; letter-spacing: -.01em; }
+        .pcard .it { font-size: .88rem; display: flex; justify-content: space-between; gap: .5rem; padding: .15rem 0; }
+        .pcard .it small { color: var(--rm-muted); display: block; }
+        .pcard .tot { font-weight: 800; font-variant-numeric: tabular-nums; }
+        .pcard .acc { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .6rem; }
+        .vacio { color: var(--rm-muted); font-size: .85rem; text-align: center; padding: 1.2rem .5rem; border: 1px dashed var(--rm-line); border-radius: 12px; }
+        .busq { position: relative; }
+        .busq .res { position: absolute; z-index: 5; left: 0; right: 0; top: 100%; background: #fff; border: 1px solid var(--rm-line); border-radius: 10px; box-shadow: var(--rm-shadow); max-height: 240px; overflow: auto; }
+        .busq .res button { display: flex; justify-content: space-between; width: 100%; text-align: left; border: 0; background: none; padding: .5rem .7rem; }
+        .busq .res button:hover { background: #f5f6f8; }
+    </style>
+</head>
+<body class="rm">
+    <%- include('partials/navbar') %>
+    <main class="rm-page container-fluid px-3 px-lg-4 pb-5">
+        <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+            <div>
+                <h1 class="rm-title h3"><i class="bi bi-bicycle me-2" style="color:var(--rm-accent)"></i>Delivery y para llevar</h1>
+                <p class="rm-sub" id="resumen">Cargando…</p>
+            </div>
+            <div class="d-flex gap-2">
+                <% if (user && user.rol === 'administrador') { %>
+                    <a class="btn btn-outline-secondary" href="/configuracion/agentes"><i class="bi bi-sliders"></i><span class="d-none d-md-inline ms-1">Zonas y horario</span></a>
+                <% } %>
+                <button class="btn btn-rm" id="btnNuevo"><i class="bi bi-plus-lg"></i> Nuevo pedido</button>
+            </div>
+        </div>
+
+        <% if (!cfg.deliveryActivo) { %>
+            <div class="alert alert-warning py-2"><i class="bi bi-pause-circle me-1"></i>El delivery está <b>pausado</b> para clientes (agentes y web). El personal puede seguir creando pedidos aquí.</div>
+        <% } %>
+
+        <div class="tablero" id="tablero">
+            <section class="col-d alerta" data-col="por_confirmar"><h2>Por confirmar <span class="n">0</span></h2><div class="lista"></div></section>
+            <section class="col-d" data-col="en_cocina"><h2>En cocina <span class="n">0</span></h2><div class="lista"></div></section>
+            <section class="col-d alerta" data-col="listo"><h2>Listos <span class="n">0</span></h2><div class="lista"></div></section>
+            <section class="col-d" data-col="en_camino"><h2>En camino <span class="n">0</span></h2><div class="lista"></div></section>
+            <section class="col-d" data-col="entregado"><h2>Entregados hoy <span class="n">0</span></h2><div class="lista"></div></section>
+        </div>
+    </main>
+
+    <!-- Modal nuevo pedido -->
+    <div class="modal fade" id="modalPedido" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <form class="modal-content" id="formPedido" autocomplete="off">
+                <div class="modal-header"><h5 class="modal-title">Nuevo pedido</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+                <div class="modal-body">
+                    <div class="btn-group w-100 mb-3" role="group" aria-label="Tipo de pedido">
+                        <input type="radio" class="btn-check" name="tipo" id="tDel" value="delivery" checked><label class="btn btn-outline-dark" for="tDel"><i class="bi bi-bicycle me-1"></i>Delivery</label>
+                        <input type="radio" class="btn-check" name="tipo" id="tLlevar" value="para_llevar"><label class="btn btn-outline-dark" for="tLlevar"><i class="bi bi-bag me-1"></i>Para llevar</label>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-sm-5"><label class="form-label small" for="pTel">Teléfono / WhatsApp</label><input id="pTel" class="form-control" inputmode="tel" placeholder="809 555 1234"></div>
+                        <div class="col-sm-7"><label class="form-label small" for="pNombre">Nombre</label><input id="pNombre" class="form-control" maxlength="100"></div>
+                        <div class="col-12 box-delivery"><label class="form-label small" for="pDir">Dirección de entrega</label><input id="pDir" class="form-control" maxlength="300" placeholder="Hotel / villa, calle, sector"></div>
+                        <div class="col-sm-7 box-delivery"><label class="form-label small" for="pRef">Referencia</label><input id="pRef" class="form-control" maxlength="300" placeholder="Frente al colmado, portón azul…"></div>
+                        <div class="col-sm-5 box-delivery">
+                            <label class="form-label small" for="pZona">Zona</label>
+                            <select id="pZona" class="form-select">
+                                <% if (zonas.length === 0) { %><option value="">Sin zonas configuradas</option><% } %>
+                                <% zonas.forEach(function (z) { %><option value="<%= z.id %>" data-costo="<%= z.costo_envio %>"><%= z.nombre %> · <%= Number(z.costo_envio).toLocaleString('es-DO') %></option><% }); %>
+                            </select>
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label small" for="pPago">Pago</label>
+                            <select id="pPago" class="form-select">
+                                <option value="efectivo">Efectivo al recibir</option>
+                                <option value="transferencia">Transferencia</option>
+                                <option value="stripe">Tarjeta en línea (enlace Stripe)</option>
+                            </select>
+                        </div>
+                        <div class="col-sm-6"><label class="form-label small" for="pNotas">Notas del pedido</label><input id="pNotas" class="form-control" maxlength="500"></div>
+                    </div>
+                    <hr>
+                    <div class="busq mb-2">
+                        <label class="form-label small" for="pBuscar">Agregar platos</label>
+                        <input id="pBuscar" class="form-control" placeholder="Buscar por nombre o código…">
+                        <div class="res d-none" id="pRes"></div>
+                    </div>
+                    <div id="pLineas" class="vstack gap-2 mb-2"></div>
+                    <div class="d-flex justify-content-end gap-4 small">
+                        <span>Subtotal: <b id="pSub" class="num"></b></span>
+                        <span class="box-delivery">Envío: <b id="pEnvio" class="num"></b></span>
+                        <span>Total: <b id="pTotal" class="num fs-6"></b></span>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <div class="form-check"><input class="form-check-input" type="checkbox" id="pConfirmar" checked><label class="form-check-label small" for="pConfirmar">Enviar directo a cocina</label></div>
+                    <div><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button> <button class="btn btn-rm" type="submit" id="btnCrear">Crear pedido</button></div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <%- include('partials/footer') %>
+    <script>window.DELIVERY = { moneda: <%- JSON.stringify(cfg.moneda) %>, rol: <%- JSON.stringify(user ? user.rol : '') %> };</script>
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
+    <script src="/js/delivery.js"></script>
+    <script src="/js/alertas-mesas.js"></script>
+</body>
+</html>

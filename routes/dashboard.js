@@ -12,7 +12,7 @@ router.get('/api/dashboard', async (req, res) => {
     try {
         const q = async (sql, params = []) => (await db.query(sql, params))[0];
         const [
-            hoyAyer, semana, top, metodos, mesas, cocina, reservas, stock, alertas, stripe
+            hoyAyer, semana, top, metodos, mesas, cocina, reservas, stock, alertas, stripe, delivery
         ] = await Promise.all([
             q(`SELECT
                  COALESCE(SUM(total) FILTER (WHERE fecha::date = CURRENT_DATE), 0)      AS ventas_hoy,
@@ -30,7 +30,7 @@ router.get('/api/dashboard', async (req, res) => {
                FROM detalle_factura df
                JOIN facturas f ON f.id = df.factura_id
                JOIN productos p ON p.id = df.producto_id
-               WHERE f.fecha::date >= CURRENT_DATE - 6
+               WHERE f.fecha::date >= CURRENT_DATE - 6 AND p.codigo <> 'ENVIO'
                GROUP BY p.id, p.nombre ORDER BY ingresos DESC LIMIT 6`),
             q(`SELECT fp.metodo, SUM(fp.monto) AS total
                FROM factura_pagos fp JOIN facturas f ON f.id = fp.factura_id
@@ -47,7 +47,11 @@ router.get('/api/dashboard', async (req, res) => {
                WHERE activo = 1 AND stock <= stock_minimo ORDER BY (stock - stock_minimo) ASC LIMIT 8`),
             q(`SELECT COUNT(*) AS n FROM mesa_alertas WHERE atendida = 0`),
             q(`SELECT COALESCE(SUM(monto), 0) AS total, COUNT(*) AS n FROM stripe_pagos
-               WHERE estado IN ('pagado','usado') AND created_at::date = CURRENT_DATE`)
+               WHERE estado IN ('pagado','usado') AND created_at::date = CURRENT_DATE`),
+            q(`SELECT COALESCE(estado_delivery, 'otro') AS estado, COUNT(*) AS n FROM pedidos
+               WHERE tipo <> 'mesa' AND (estado_delivery IN ('por_confirmar','en_cocina','en_camino')
+                     OR (estado_delivery = 'entregado' AND entregado_at::date = CURRENT_DATE))
+               GROUP BY 1`)
         ]);
 
         const h = hoyAyer[0];
@@ -73,7 +77,8 @@ router.get('/api/dashboard', async (req, res) => {
             reservas,
             stock_bajo: stock,
             alertas_pendientes: Number(alertas[0].n),
-            stripe_hoy: { total: Number(stripe[0].total), cobros: Number(stripe[0].n) }
+            stripe_hoy: { total: Number(stripe[0].total), cobros: Number(stripe[0].n) },
+            delivery: contar(delivery)
         });
     } catch (e) {
         console.error('Error en dashboard:', e);

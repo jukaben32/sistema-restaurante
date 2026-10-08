@@ -92,7 +92,7 @@ admin.post('/', async (req, res) => {
         const publishableKey = String(b.publishableKey || '').trim();
         const secretKey = String(b.secretKey || '').trim();
         const webhookSecret = String(b.webhookSecret || '').trim();
-        const moneda = String(b.moneda || 'usd').trim().toLowerCase();
+        const moneda = String(b.moneda || 'dop').trim().toLowerCase();
         const appUrlPublica = String(b.appUrlPublica || '').trim().replace(/\/+$/, '');
 
         if (publishableKey && !/^pk_(test|live)_/.test(publishableKey)) return res.status(400).json({ error: 'La llave publicable debe empezar con pk_test_ o pk_live_' });

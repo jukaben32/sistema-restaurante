@@ -132,6 +132,14 @@ app.use(inventarioRoutes);
 app.use('/api/stripe', personal, stripeRoutes.staff);
 app.use('/configuracion/stripe', requireRole('administrador'), stripeRoutes.admin);
 
+// Delivery / para llevar (personal) y datos del negocio para delivery y agentes (admin)
+const deliveryRoutes = require('./routes/delivery');
+const agentesRoutes = require('./routes/agentes');
+app.use(['/delivery', '/api/delivery'], personal);
+app.use(deliveryRoutes);
+app.use(['/configuracion/agentes', '/api/negocio'], requireRole('administrador'));
+app.use(agentesRoutes);
+
 // Ruta principal (requiere login)
 app.get('/', requireAuth, (req, res) => {
     const rol = String(req.session?.user?.rol || '').toLowerCase();

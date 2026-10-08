@@ -232,8 +232,14 @@ const staff = express.Router();
 staff.get('/api/mesa-alertas', async (req, res) => {
     try {
         const [rows] = await db.query(
-            `SELECT a.id, a.tipo, a.mensaje, a.created_at, m.id AS mesa_id, m.numero AS mesa_numero
-             FROM mesa_alertas a JOIN mesas m ON m.id = a.mesa_id
+            `SELECT a.id, a.tipo, a.mensaje, a.created_at, m.id AS mesa_id, a.pedido_id,
+                    (a.pedido_id IS NOT NULL) AS es_pedido,
+                    CASE WHEN a.pedido_id IS NOT NULL
+                         THEN CASE p.tipo WHEN 'delivery' THEN 'DEL-' ELSE 'LLEVAR-' END || p.id
+                         ELSE m.numero END AS mesa_numero
+             FROM mesa_alertas a
+             LEFT JOIN mesas m ON m.id = a.mesa_id
+             LEFT JOIN pedidos p ON p.id = a.pedido_id
              WHERE a.atendida = 0
              ORDER BY a.created_at ASC
              LIMIT 50`

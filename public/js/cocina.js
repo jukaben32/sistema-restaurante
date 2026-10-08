@@ -217,12 +217,20 @@ $(function(){
         </div>`;
     }).join('');
 
-    const acciones = (canKitchenActions && mesaId > 0) ? `
+    // Pedidos de delivery / para llevar no tienen mesa: se preparan por pedido
+    // Relacionado con: routes/cocina.js (PUT /pedido/:pedidoId/preparar), routes/delivery.js
+    const tipoPedido = String(first.tipo || 'mesa');
+    const esDelivery = tipoPedido !== 'mesa';
+    const pedidoId = Number(first.pedido_id || 0);
+    const acciones = canKitchenActions && (mesaId > 0 || (esDelivery && pedidoId > 0)) ? `
       <div class="d-flex justify-content-end mt-2">
-        <button class="btn btn-sm btn-primary" data-action="prep-mesa" data-mesa-id="${mesaId}">
-          <i class="bi bi-play me-1"></i>Preparar mesa
+        <button class="btn btn-sm btn-primary" data-action="prep-mesa" ${esDelivery ? `data-pedido-id="${pedidoId}"` : `data-mesa-id="${mesaId}"`}>
+          <i class="bi bi-play me-1"></i>${esDelivery ? 'Preparar pedido' : 'Preparar mesa'}
         </button>
       </div>` : '';
+    const etiquetaMesa = esDelivery
+      ? `<i class="bi bi-bicycle me-1"></i>${tipoPedido === 'delivery' ? 'Delivery' : 'Para llevar'} ${mesa}`
+      : `<i class="bi bi-grid-3x3-gap me-1"></i>Mesa ${mesa}`;
 
     return `
       <div class="card cocina-card border-start border-4 border-primary">
@@ -230,7 +238,7 @@ $(function(){
           <div class="d-flex justify-content-between gap-2 mb-2">
             <div>
               <div class="d-flex align-items-center gap-2 flex-wrap">
-                <span class="badge text-bg-dark"><i class="bi bi-grid-3x3-gap me-1"></i>Mesa ${mesa}</span>
+                <span class="badge ${esDelivery ? 'text-bg-warning' : 'text-bg-dark'}">${etiquetaMesa}</span>
                 <span class="badge text-bg-primary"><i class="bi bi-send me-1"></i>Enviado</span>
               </div>
               <div class="meta mt-1">${hora ? `${hora} · ${timeAgo(ref)}` : timeAgo(ref)}</div>
@@ -404,7 +412,9 @@ $(function(){
       const header = `
         <div class="d-flex align-items-center justify-content-between mt-2">
           <div class="fw-semibold">
-            <i class="bi bi-grid-3x3-gap me-1"></i>Mesa ${escapeHtml(mesa)}
+            ${String(arrListos?.[0]?.tipo || 'mesa') !== 'mesa'
+              ? `<i class="bi bi-bicycle me-1"></i>${escapeHtml(mesa)}`
+              : `<i class="bi bi-grid-3x3-gap me-1"></i>Mesa ${escapeHtml(mesa)}`}
             <span class="meta ms-2"><i class="bi bi-person-badge me-1"></i>${mesero}</span>
           </div>
           <div class="d-flex align-items-center gap-2">
@@ -438,8 +448,12 @@ $(function(){
   });
   $(document).on('click','[data-action="prep-mesa"]', async function(){
     const mesaId = String(this.dataset.mesaId || '').trim();
-    if(!mesaId) return;
-    const resp = await fetch(`/api/cocina/mesa/${encodeURIComponent(mesaId)}/preparar`, {
+    const pedidoIdDel = String(this.dataset.pedidoId || '').trim();
+    if(!mesaId && !pedidoIdDel) return;
+    const urlPreparar = pedidoIdDel
+      ? `/api/cocina/pedido/${encodeURIComponent(pedidoIdDel)}/preparar`
+      : `/api/cocina/mesa/${encodeURIComponent(mesaId)}/preparar`;
+    const resp = await fetch(urlPreparar, {
       method:'PUT',
       headers:{'Content-Type':'application/json'}
     });

@@ -118,6 +118,13 @@
       <span class="rm-chip danger"><i class="bi bi-exclamation-triangle"></i>${Number(s.stock).toLocaleString('es', { maximumFractionDigits: 2 })} ${esc(s.unidad)}</span></div>`).join('')
       : '<div class="rm-empty py-3"><i class="bi bi-check2-circle"></i>Todo el inventario en orden</div>';
 
+    const dl = d.delivery || {};
+    $('delivery').innerHTML = `
+      <div class="mini"><span><span class="rm-chip warn"><i class="bi bi-bell"></i>Por confirmar</span></span><b class="num">${dl.por_confirmar || 0}</b></div>
+      <div class="mini"><span>En cocina</span><b class="num">${dl.en_cocina || 0}</b></div>
+      <div class="mini"><span>En camino</span><b class="num">${dl.en_camino || 0}</b></div>
+      <div class="mini"><span>Entregados hoy</span><b class="num">${dl.entregado || 0}</b></div>`;
+
     const NOMBRE = { efectivo: 'Efectivo', transferencia: 'Transferencia', tarjeta: 'Tarjeta (incluye Stripe)', qr: 'QR' };
     $('metodos').innerHTML = d.metodos.length ? `<div class="row g-3">${d.metodos.map((x) => `
       <div class="col-6 col-md-3"><div class="small text-muted">${NOMBRE[x.metodo] || esc(x.metodo)}</div><div class="fs-5 fw-semibold num text-start">${money(x.total)}</div></div>`).join('')}</div>`
