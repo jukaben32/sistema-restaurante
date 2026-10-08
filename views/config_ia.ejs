@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('partials/head') %>
+    <title>Asistentes IA · Restaurant Martin</title>
+    <style>
+        .chk { display: flex; align-items: center; gap: .5rem; font-size: .9rem; padding: .2rem 0; }
+        .chk i.ok { color: var(--rm-ok); } .chk i.no { color: var(--rm-danger); } .chk i.pend { color: var(--rm-warn); }
+        .chk code { font-size: .8rem; }
+        .qrbox img { width: 250px; height: 250px; image-rendering: pixelated; background: #fff; padding: 8px; border: 1px solid var(--rm-line); border-radius: 12px; }
+        pre.prompt { white-space: pre-wrap; font-size: .8rem; max-height: 60vh; overflow: auto; text-align: left; }
+    </style>
+</head>
+<body class="rm">
+    <%- include('partials/navbar') %>
+    <main class="rm-page container pb-5" style="max-width: 1000px;">
+        <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+            <div>
+                <h1 class="rm-title h3"><i class="bi bi-robot me-2" style="color:var(--rm-accent)"></i>Asistentes IA</h1>
+                <p class="rm-sub">Un asistente atiende las llamadas y otro los mensajes de WhatsApp: toman pedidos de delivery, reservas y responden dudas. Los pedidos llegan a <a href="/delivery">Delivery</a> para que tú los confirmes.</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="/conversaciones" class="btn btn-outline-secondary btn-sm"><i class="bi bi-chat-dots"></i> Conversaciones</a>
+                <a href="/configuracion/agentes" class="btn btn-outline-secondary btn-sm"><i class="bi bi-sliders"></i> Zonas, horario y FAQ</a>
+            </div>
+        </div>
+
+        <div id="cargando" class="rm-empty"><span class="rm-pulse"></span>Cargando…</div>
+
+        <div id="contenido" class="d-none">
+            <div class="row g-3">
+                <!-- ===== VOZ ===== -->
+                <div class="col-lg-6">
+                    <div class="rm-card h-100">
+                        <div class="rm-card-h"><i class="bi bi-telephone"></i><h2>Agente de voz (Vapi)</h2><span id="chipVoz" class="rm-chip ms-auto"></span></div>
+                        <div class="rm-card-b">
+                            <div id="chkVoz" class="mb-3"></div>
+                            <label class="form-label small fw-semibold" for="vozMsg">Primer mensaje al contestar</label>
+                            <textarea id="vozMsg" class="form-control mb-2" rows="2" maxlength="500" placeholder="Vacío = saludo automático en español e inglés"></textarea>
+                            <label class="form-label small fw-semibold" for="vozExtra">Instrucciones adicionales (opcional)</label>
+                            <textarea id="vozExtra" class="form-control mb-2" rows="3" maxlength="2000" placeholder="Ej.: Ofrece siempre el postre del día. No aceptamos pedidos de delivery después de las 10 pm."></textarea>
+                            <label class="form-label small fw-semibold" for="vozPn">ID del número en Vapi (Phone Number ID)</label>
+                            <input id="vozPn" class="form-control mb-2" maxlength="100" placeholder="Pega el ID del número que compraste o importaste en Vapi">
+                            <label class="form-label small fw-semibold" for="vozNumero">Número para recibir llamadas (referencia)</label>
+                            <input id="vozNumero" class="form-control mb-3" maxlength="30" placeholder="+1 829 555 0000">
+                            <div class="d-flex flex-wrap gap-2">
+                                <button class="btn btn-rm" id="btnPublicar"><i class="bi bi-cloud-upload"></i> Guardar y publicar en Vapi</button>
+                                <button class="btn btn-outline-secondary" data-prompt="voz"><i class="bi bi-eye"></i> Ver instrucciones</button>
+                                <a class="btn btn-outline-secondary d-none" id="linkVapi" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> Abrir en Vapi</a>
+                            </div>
+                            <p class="small text-muted mt-3 mb-0">
+                                Idioma automático (español, inglés y más). La voz se elige al crear el asistente; después puedes cambiarla en el dashboard de Vapi y al publicar no se pisa.
+                                Para usar el número actual del restaurante, pide a tu operadora el <b>desvío de llamadas</b> hacia el número de Vapi.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== WHATSAPP ===== -->
+                <div class="col-lg-6">
+                    <div class="rm-card h-100">
+                        <div class="rm-card-h"><i class="bi bi-whatsapp"></i><h2>WhatsApp (Evolution API)</h2><span id="chipWa" class="rm-chip ms-auto"></span></div>
+                        <div class="rm-card-b">
+                            <div id="chkWa" class="mb-3"></div>
+
+                            <div id="waSin" class="d-none">
+                                <p class="small text-muted">Crea la conexión y escanea el código QR con el WhatsApp del restaurante (WhatsApp → Dispositivos vinculados).</p>
+                                <button class="btn btn-success" id="btnCrearWa"><i class="bi bi-qr-code"></i> Conectar WhatsApp</button>
+                            </div>
+
+                            <div id="waQr" class="d-none text-center">
+                                <div class="qrbox mb-2"><img id="imgQr" alt="Código QR de WhatsApp"></div>
+                                <p class="small text-muted mb-0">Escanéalo con el teléfono del restaurante. Se actualiza solo cuando se conecta.</p>
+                            </div>
+
+                            <div id="waCon" class="d-none">
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="waActivo">
+                                    <label class="form-check-label fw-semibold" for="waActivo">El asistente responde los mensajes</label>
+                                </div>
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="waAvisos">
+                                    <label class="form-check-label" for="waAvisos">Avisos automáticos al cliente (pedido confirmado, en camino, factura, recordatorio de reserva)</label>
+                                </div>
+                                <label class="form-label small fw-semibold" for="waExtra">Instrucciones adicionales (opcional)</label>
+                                <textarea id="waExtra" class="form-control mb-3" rows="3" maxlength="2000" placeholder="Ej.: Menciona que los viernes hay música en vivo."></textarea>
+                                <div class="input-group mb-3">
+                                    <input id="waPrueba" class="form-control" placeholder="Número para probar (829 555 0000)" inputmode="tel">
+                                    <button class="btn btn-outline-secondary" id="btnPrueba"><i class="bi bi-send"></i> Enviar prueba</button>
+                                </div>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button class="btn btn-rm" id="btnGuardarWa"><i class="bi bi-save"></i> Guardar</button>
+                                    <button class="btn btn-outline-secondary" data-prompt="texto"><i class="bi bi-eye"></i> Ver instrucciones</button>
+                                    <button class="btn btn-outline-danger ms-auto" id="btnDesconectar"><i class="bi bi-x-circle"></i> Desconectar</button>
+                                </div>
+                            </div>
+
+                            <p class="small text-muted mt-3 mb-0">
+                                Evolution API no es la API oficial de WhatsApp: para evitar bloqueos el asistente solo <b>responde</b> y envía avisos del propio pedido o reserva (nunca mensajes masivos).
+                                Si escribes tú desde el teléfono del restaurante, el asistente se pausa en esa conversación.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal prompt -->
+    <div class="modal fade" id="modalPrompt" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title" id="promptTitulo">Instrucciones del asistente</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+                <div class="modal-body"><p class="small text-muted">Se arman solas con tu menú, horario, zonas y preguntas frecuentes. Esto es lo que lee el asistente.</p><pre class="prompt rm-card p-3 mb-0" id="promptTexto"></pre></div>
+            </div>
+        </div>
+    </div>
+
+    <%- include('partials/footer') %>
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
+    <script src="/js/config-ia.js"></script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('partials/head') %>
+    <title>Conversaciones · Restaurant Martin</title>
+    <style>
+        .bandeja { display: grid; grid-template-columns: 340px 1fr; gap: 1rem; min-height: 70vh; }
+        @media (max-width: 860px) { .bandeja { grid-template-columns: 1fr; } .bandeja.abierta .lado-lista { display: none; } .bandeja:not(.abierta) .lado-chat { display: none; } }
+        .lista-c { max-height: 72vh; overflow: auto; }
+        .it { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--rm-line); background: #fff; padding: .7rem .9rem; }
+        .it:hover, .it.sel { background: #f1f3f6; }
+        .it .n { font-weight: 650; display: flex; justify-content: space-between; gap: .4rem; }
+        .it .u { color: var(--rm-muted); font-size: .84rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .chat { display: flex; flex-direction: column; height: 72vh; }
+        .chat .msgs { flex: 1; overflow: auto; padding: 1rem; background: #f7f5f1; display: flex; flex-direction: column; gap: .45rem; }
+        .b { max-width: 78%; padding: .5rem .75rem; border-radius: 14px; font-size: .92rem; white-space: pre-wrap; word-break: break-word; }
+        .b.cliente { background: #fff; border: 1px solid var(--rm-line); align-self: flex-start; border-bottom-left-radius: 4px; }
+        .b.agente { background: #e6f0ff; align-self: flex-end; border-bottom-right-radius: 4px; }
+        .b.personal { background: #dff3e4; align-self: flex-end; border-bottom-right-radius: 4px; }
+        .b small { display: block; opacity: .6; font-size: .7rem; margin-top: .15rem; }
+        .ev { align-self: center; font-size: .75rem; color: var(--rm-muted); background: #eceff3; border-radius: 99px; padding: .1rem .6rem; }
+    </style>
+</head>
+<body class="rm">
+    <%- include('partials/navbar') %>
+    <main class="rm-page container-fluid px-3 px-lg-4 pb-4">
+        <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+            <div>
+                <h1 class="rm-title h3"><i class="bi bi-chat-dots me-2" style="color:var(--rm-accent)"></i>Conversaciones</h1>
+                <p class="rm-sub">Llamadas y mensajes que atienden los asistentes. Toma una conversación cuando haga falta una persona.</p>
+            </div>
+            <% if (user && user.rol === 'administrador') { %><a href="/configuracion/ia" class="btn btn-outline-secondary btn-sm"><i class="bi bi-robot"></i> Asistentes IA</a><% } %>
+        </div>
+
+        <div class="bandeja" id="bandeja">
+            <div class="rm-card lado-lista">
+                <div class="rm-card-h">
+                    <select id="filtro" class="form-select form-select-sm" aria-label="Filtrar">
+                        <option value="todas">Todas</option>
+                        <option value="humano">Necesitan una persona</option>
+                        <option value="whatsapp">WhatsApp</option>
+                        <option value="voz">Llamadas</option>
+                    </select>
+                </div>
+                <div class="lista-c" id="lista"><div class="rm-empty"><span class="rm-pulse"></span>Cargando…</div></div>
+            </div>
+
+            <div class="rm-card lado-chat">
+                <div id="vacio" class="rm-empty my-auto"><i class="bi bi-chat-square-text"></i>Elige una conversación</div>
+                <div id="chat" class="chat d-none">
+                    <div class="rm-card-h">
+                        <button class="btn btn-sm btn-outline-secondary d-md-none" id="btnVolver" aria-label="Volver"><i class="bi bi-arrow-left"></i></button>
+                        <div class="flex-grow-1 min-w-0"><div class="fw-bold text-truncate" id="cNombre"></div><div class="small text-muted" id="cMeta"></div></div>
+                        <div class="d-flex gap-1 flex-wrap justify-content-end">
+                            <button class="btn btn-sm btn-outline-secondary" id="btnPausa"></button>
+                            <button class="btn btn-sm btn-outline-success d-none" id="btnResuelto"><i class="bi bi-check2"></i> Resuelta</button>
+                        </div>
+                    </div>
+                    <div id="resumen" class="small px-3 py-2 border-bottom d-none" style="background:#fffaf0"></div>
+                    <div class="msgs" id="msgs"></div>
+                    <form id="formEnviar" class="d-flex gap-2 p-2 border-top">
+                        <input id="txt" class="form-control" placeholder="Responder por WhatsApp…" maxlength="2000" autocomplete="off">
+                        <button class="btn btn-rm" type="submit" id="btnEnviar"><i class="bi bi-send"></i></button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+    <%- include('partials/footer') %>
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
+    <script src="/js/conversaciones.js"></script>
+    <script src="/js/alertas-mesas.js"></script>
+</body>
+</html>

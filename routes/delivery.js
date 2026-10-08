@@ -6,6 +6,7 @@ const express = require('express');
 const db = require('../db');
 const delivery = require('../services/delivery');
 const clientesService = require('../services/clientes');
+const avisos = require('../services/agente/avisos');
 
 const router = express.Router();
 
@@ -81,18 +82,21 @@ router.post('/api/delivery', async (req, res) => {
     } catch (e) { responderError(res, e, 'Error al crear el pedido'); }
 });
 
-const accion = (nombre, fn, msg) => router.post(`/api/delivery/:id(\\d+)/${nombre}`, async (req, res) => {
+// despues(id, resultado): aviso por WhatsApp al cliente (nunca bloquea ni rompe la acción)
+const accion = (nombre, fn, msg, despues) => router.post(`/api/delivery/:id(\\d+)/${nombre}`, async (req, res) => {
     try {
-        res.json({ ok: true, ...(await fn(req)) });
+        const out = await fn(req);
+        res.json({ ok: true, ...out });
+        if (despues) Promise.resolve(despues(Number(req.params.id), out)).catch(() => {});
     } catch (e) { responderError(res, e, msg); }
 });
 
-accion('confirmar', (req) => enTransaccion((c) => delivery.confirmar(c, Number(req.params.id), usuario(req))), 'Error al confirmar el pedido');
-accion('cancelar', (req) => enTransaccion((c) => delivery.cancelar(c, Number(req.params.id), req.body?.motivo, usuario(req))), 'Error al cancelar el pedido');
+accion('confirmar', (req) => enTransaccion((c) => delivery.confirmar(c, Number(req.params.id), usuario(req))), 'Error al confirmar el pedido', (id) => avisos.pedido(id, 'confirmado'));
+accion('cancelar', (req) => enTransaccion((c) => delivery.cancelar(c, Number(req.params.id), req.body?.motivo, usuario(req))), 'Error al cancelar el pedido', (id) => avisos.pedido(id, 'cancelado'));
 accion('repartidor', (req) => enTransaccion((c) => delivery.asignarRepartidor(c, Number(req.params.id), req.body?.repartidor)).then(() => ({})), 'Error al asignar repartidor');
-accion('en-camino', (req) => enTransaccion((c) => delivery.marcarEnCamino(c, Number(req.params.id))).then(() => ({})), 'Error al marcar en camino');
+accion('en-camino', (req) => enTransaccion((c) => delivery.marcarEnCamino(c, Number(req.params.id))).then(() => ({})), 'Error al marcar en camino', (id) => avisos.pedido(id, 'en_camino'));
 accion('validar-pago', (req) => enTransaccion((c) => delivery.validarTransferencia(c, Number(req.params.id))).then(() => ({})), 'Error al validar el pago');
 accion('cobro-stripe', (req) => delivery.cobroStripe(Number(req.params.id), { baseUrl: baseUrl(req), usuario: usuario(req) }), 'Error al generar el enlace de pago');
-accion('entregar', (req) => enTransaccion((c) => delivery.entregarYFacturar(c, Number(req.params.id), { pagos: req.body?.pagos, usuario: req.session?.user?.usuario || null })), 'Error al entregar y facturar');
+accion('entregar', (req) => enTransaccion((c) => delivery.entregarYFacturar(c, Number(req.params.id), { pagos: req.body?.pagos, usuario: req.session?.user?.usuario || null })), 'Error al entregar y facturar', (id) => avisos.pedido(id, 'entregado'));
 
 module.exports = router;

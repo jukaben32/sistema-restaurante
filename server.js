@@ -103,6 +103,9 @@ const ventasRoutes = require('./routes/ventas');
 const authRoutes = require('./routes/auth');
 const usuariosRoutes = require('./routes/usuarios');
 
+// Comprobación de salud (Docker / Dokploy)
+app.get('/healthz', (req, res) => res.json({ ok: true }));
+
 // Auth routes (públicas): /login /logout /setup
 app.use(authRoutes);
 
@@ -119,6 +122,9 @@ app.use(reservasRoutes.publico);
 
 // Agente de voz (Vapi): webhook público protegido por token (routes/vapi.js)
 app.use(require('./routes/vapi'));
+
+// WhatsApp (Evolution API): webhook público; el secreto va en la URL (routes/whatsapp.js)
+app.use(require('./routes/whatsapp'));
 
 // Personal: avisos del menú QR, hoja de QR, reservas
 app.use(['/api/mesa-alertas', '/mesas-qr', '/api/mesas-qr'], personal);
@@ -142,6 +148,12 @@ app.use(['/delivery', '/api/delivery'], personal);
 app.use(deliveryRoutes);
 app.use(['/configuracion/agentes', '/api/negocio'], requireRole('administrador'));
 app.use(agentesRoutes);
+
+// Asistentes IA: configuración (admin) y bandeja de conversaciones (personal)
+app.use(['/configuracion/ia', '/api/ia'], requireRole('administrador'));
+app.use(require('./routes/ia'));
+app.use(['/conversaciones', '/api/conversaciones'], personal);
+app.use(require('./routes/conversaciones'));
 
 // Ruta principal (requiere login)
 app.get('/', requireAuth, (req, res) => {
@@ -243,6 +255,8 @@ async function startServer() {
         connection.release();
         console.log('Conexión exitosa a la base de datos');
         await db.ensureSchema();
+        // Recordatorios de reservas por WhatsApp (solo actúan si WhatsApp está conectado)
+        require('./services/agente/avisos').iniciarRecordatorios();
 
         // Iniciar el servidor solo si la conexión a la base de datos es exitosa.
         // Si el puerto está ocupado, probamos automáticamente el siguiente disponible.

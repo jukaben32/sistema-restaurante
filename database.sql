@@ -398,6 +398,8 @@ CREATE TABLE IF NOT EXISTS agentes_config (
     wa_numero VARCHAR(30),
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+ALTER TABLE agentes_config ADD COLUMN IF NOT EXISTS wa_avisos SMALLINT NOT NULL DEFAULT 1;
+ALTER TABLE reservas ADD COLUMN IF NOT EXISTS recordatorio_enviado_at TIMESTAMPTZ;
 INSERT INTO agentes_config (id) VALUES (1) ON CONFLICT DO NOTHING;
 
 -- Conversaciones de los agentes (llamadas y chats de WhatsApp) con su historial

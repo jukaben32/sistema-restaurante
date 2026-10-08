@@ -38,6 +38,17 @@ Para usarla desde otros equipos de la red local, abre el puerto 3000 en el firew
 | **Factura por WhatsApp** | Botón en la factura | Todos |
 | **App instalable (PWA)** para celulares y tablets | Menú del navegador → "Instalar" (requiere HTTPS o localhost) | Todos |
 
+### Delivery y asistentes de IA (voz y WhatsApp)
+| Función | Dónde | Quién |
+|---|---|---|
+| **Delivery y para llevar**: tablero (por confirmar → cocina → listo → en camino → entregado), zonas con costo de envío, cobro en efectivo, transferencia validada o enlace de Stripe, factura al entregar | `/delivery` | Mesero / Admin |
+| **Agente de voz (Vapi)**: atiende llamadas, toma pedidos y reservas en el idioma del cliente, pasa con una persona | Configuración → Asistentes IA | Admin |
+| **Asistente de WhatsApp (Evolution API)**: lo mismo por chat; avisos automáticos de pedido y reserva | Configuración → Asistentes IA | Admin |
+| **Conversaciones**: llamadas y chats, tomar el control, responder por WhatsApp | `/conversaciones` | Mesero / Admin |
+| **Datos para los asistentes**: horario, zonas, FAQ, transferencia | Configuración → Delivery y agentes | Admin |
+
+Los pedidos y reservas que toman los asistentes entran **por confirmar**: el personal los revisa antes de pasar a cocina. Vapi y WhatsApp necesitan que la app esté en internet con HTTPS: ver [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md).
+
 ### Configurar Stripe
 1. En [dashboard.stripe.com](https://dashboard.stripe.com) → Developers → API keys, copia la llave secreta (`sk_test_…` para pruebas).
 2. En la app: Configuración → **Pagos con Stripe**, pega la llave, elige la moneda, activa el interruptor y pulsa **Probar conexión**.

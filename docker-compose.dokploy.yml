@@ -1,0 +1,93 @@
+# Restaurant Martin en un VPS con Dokploy (https://dokploy.com)
+# Servicios: la app del POS + Evolution API (WhatsApp) con su propio Postgres y Redis.
+# La base de datos del POS NO está aquí: sigue en Supabase (DATABASE_URL).
+#
+# ⚠️ No se pudo probar Docker en el equipo de desarrollo: revisa los logs en el primer despliegue.
+# Variables: se cargan en Dokploy → Environment (ver docs/DESPLIEGUE.md). Nunca las subas a Git.
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DATABASE_URL: ${DATABASE_URL}
+      DB_TIMEZONE: ${DB_TIMEZONE:-America/Santo_Domingo}
+      SESSION_SECRET: ${SESSION_SECRET}
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY}
+      APP_URL: ${APP_URL}
+      WHATSAPP_CODIGO_PAIS: ${WHATSAPP_CODIGO_PAIS:-1}
+      VAPI_API_KEY: ${VAPI_API_KEY:-}
+      VAPI_WEBHOOK_TOKEN: ${VAPI_WEBHOOK_TOKEN}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      EVOLUTION_API_URL: http://evolution-api:8080
+      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY}
+    depends_on:
+      - evolution-api
+    networks:
+      - dokploy-network
+      - interna
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.martin-app.rule=Host(`${APP_DOMAIN}`)"
+      - "traefik.http.routers.martin-app.entrypoints=websecure"
+      - "traefik.http.routers.martin-app.tls.certresolver=letsencrypt"
+      - "traefik.http.services.martin-app.loadbalancer.server.port=3000"
+
+  evolution-api:
+    # Revisa la versión vigente en https://doc.evolution-api.com y fíjala aquí
+    image: ${EVOLUTION_IMAGE:-atendai/evolution-api:v2.2.3}
+    restart: unless-stopped
+    environment:
+      SERVER_URL: ${EVOLUTION_SERVER_URL:-http://evolution-api:8080}
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY}
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://evolution:${EVOLUTION_DB_PASSWORD}@evolution-db:5432/evolution
+      DATABASE_SAVE_DATA_INSTANCE: "true"
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "false"
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://evolution-redis:6379/6
+      CACHE_REDIS_PREFIX_KEY: evolution
+      CACHE_LOCAL_ENABLED: "false"
+      WEBHOOK_GLOBAL_ENABLED: "false"
+    volumes:
+      - evolution_instances:/evolution/instances
+    depends_on:
+      - evolution-db
+      - evolution-redis
+    networks:
+      - interna
+    # No se publica al exterior: solo la app habla con Evolution por la red interna
+
+  evolution-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: evolution
+      POSTGRES_PASSWORD: ${EVOLUTION_DB_PASSWORD}
+      POSTGRES_DB: evolution
+    volumes:
+      - evolution_pgdata:/var/lib/postgresql/data
+    networks:
+      - interna
+
+  evolution-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - evolution_redis:/data
+    networks:
+      - interna
+
+volumes:
+  evolution_instances:
+  evolution_pgdata:
+  evolution_redis:
+
+networks:
+  dokploy-network:
+    external: true
+  interna:
+    driver: bridge

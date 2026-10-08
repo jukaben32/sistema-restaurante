@@ -142,13 +142,17 @@ async function actualizarDesdeSesion(session) {
         );
         // Pago de un pedido de delivery / para llevar: avisar al personal (una sola vez)
         if (upd.affectedRows > 0) {
-            await db.query(
-                `INSERT INTO mesa_alertas (pedido_id, tipo, mensaje)
-                 SELECT p.id, 'pago_recibido', 'Pago con Stripe confirmado'
-                 FROM stripe_pagos sp JOIN pedidos p ON p.id = sp.pedido_id
-                 WHERE sp.session_id = ? AND p.tipo <> 'mesa'`,
-                [session.id]
-            ).catch((e) => console.error('No se pudo registrar el aviso de pago:', e.message));
+            try {
+                const [ped] = await db.query(
+                    `SELECT p.id FROM stripe_pagos sp JOIN pedidos p ON p.id = sp.pedido_id WHERE sp.session_id = ? AND p.tipo <> 'mesa'`,
+                    [session.id]
+                );
+                if (ped[0]) {
+                    await db.query(`INSERT INTO mesa_alertas (pedido_id, tipo, mensaje) VALUES (?, 'pago_recibido', 'Pago con Stripe confirmado')`, [ped[0].id]);
+                    // Aviso al cliente por WhatsApp (carga perezosa: evita dependencias circulares)
+                    require('./agente/avisos').pedido(ped[0].id, 'pago').catch(() => {});
+                }
+            } catch (e) { console.error('No se pudo registrar el aviso de pago:', e.message); }
         }
     } else if (session.status === 'expired') {
         await db.query(`UPDATE stripe_pagos SET estado = 'expirado' WHERE session_id = ? AND estado = 'pendiente'`, [session.id]);
