@@ -24,12 +24,13 @@ if (process.env.NODE_ENV === 'production') {
     process.exit(1);
 }
 
-const SUITES = ['01-pos-mesas-stripe-reservas', '02-delivery', '03-voz-vapi', '04-whatsapp'];
+const SUITES = ['01-pos-mesas-stripe-reservas', '02-delivery', '03-voz-vapi', '04-whatsapp', '05-ayuda-y-movil'];
 const ENTORNO_SIMULADO = {
     EVOLUTION_API_URL: 'http://localhost:4801', EVOLUTION_API_KEY: 'globalkey',
     OPENAI_API_KEY: 'test', OPENAI_BASE_URL: 'http://localhost:4802/v1',
     APP_URL: 'https://pos.example.com', WA_PAUSA_MIN_MS: '0', WA_PAUSA_MAX_MS: '0',
-    PORT: '3000'
+    PORT: '3000',
+    DB_POOL_MAX: '4' // el Session pooler de Supabase admite pocas conexiones simultáneas (15 en el plan gratis)
 };
 
 async function vaciarBase() {

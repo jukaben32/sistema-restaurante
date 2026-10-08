@@ -12,7 +12,7 @@ La app se puede publicar en Vercel, pero conviene saber **qué cambia** respecto
 | Mensajes ya vistos, "enviado por el sistema", tope anti-abuso y orden por cliente estaban en memoria | Tablas `wa_ids`, `candados` y consultas a la base de datos |
 | Los recordatorios de reservas usaban un temporizador | Ruta `/api/cron/mantenimiento` (Vercel Cron o un pinger) |
 | Archivos estáticos de Bootstrap, etc. salían de `node_modules` | Se copian a `public/vendor` en el build y los sirve la CDN |
-| Muchas conexiones a la base de datos | Pool pequeño (4) por instancia; **usa el Session pooler de Supabase** |
+| Muchas conexiones a la base de datos | Pool pequeño (3) por instancia (`DB_POOL_MAX`); **usa el Session pooler de Supabase**, que en el plan gratis admite 15 conexiones en total |
 
 ## Limitaciones que debes conocer
 - **Evolution API (WhatsApp) NO puede correr en Vercel.** Necesita un servidor encendido 24 h: usa tu VPS con `docker-compose.evolution.yml` (más abajo).

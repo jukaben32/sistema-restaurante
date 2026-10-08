@@ -1,0 +1,16 @@
+<%# Cabecera para móviles (Android e iPhone). Reemplaza al <meta viewport> en todas las pantallas.
+    - viewport-fit=cover: la página usa toda la pantalla del iPhone (notch / barra inferior) y el CSS respeta las zonas seguras
+    - etiquetas de Apple: ícono y modo "app" al agregar a la pantalla de inicio de Safari
+    - manifest + theme-color: instalación en Android y color de la barra del navegador
+    Relacionado con: public/css/movil.css, public/manifest.webmanifest %>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2c3e50">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Martin POS">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="stylesheet" href="/css/movil.css">

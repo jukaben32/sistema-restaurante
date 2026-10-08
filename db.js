@@ -33,7 +33,7 @@ const pool = new Pool({
     ssl: String(process.env.DB_SSL || '').toLowerCase() === 'false' ? false : { rejectUnauthorized: false },
     // En Vercel (serverless) cada instancia abre pocas conexiones y las suelta pronto; en un servidor, 10.
     // Ajustable con DB_POOL_MAX. Usa el Session pooler de Supabase (puerto 5432).
-    max: Number(process.env.DB_POOL_MAX || (process.env.VERCEL ? 4 : 10)),
+    max: Number(process.env.DB_POOL_MAX || (process.env.VERCEL ? 3 : 10)),
     idleTimeoutMillis: process.env.VERCEL ? 8000 : 30000
 });
 

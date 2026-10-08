@@ -72,6 +72,8 @@ app.use(session({
 
 // Hacer disponible el usuario en EJS como "user"
 app.use(attachUserToLocals);
+// Ruta actual para marcar la opción activa del menú (views/partials/navbar.ejs)
+app.use((req, res, next) => { res.locals.rutaActual = req.path; next(); });
 
 // Configuración de archivos estáticos
 // (en Vercel, public/ lo sirve la CDN directamente; esto cubre servidor propio y desarrollo)
@@ -158,6 +160,10 @@ app.use(['/configuracion/ia', '/api/ia'], requireRole('administrador'));
 app.use(require('./routes/ia'));
 app.use(['/conversaciones', '/api/conversaciones'], personal);
 app.use(require('./routes/conversaciones'));
+
+// Guía de uso integrada (cualquier rol con sesión): routes/ayuda.js
+app.use(['/ayuda'], requireAuth);
+app.use(require('./routes/ayuda'));
 
 // Ruta principal (requiere login)
 app.get('/', requireAuth, (req, res) => {

@@ -2,10 +2,12 @@
 // - Archivos estáticos (vendor, css, js, íconos): caché con actualización en segundo plano.
 // - Páginas: siempre desde la red; si no hay conexión, muestra /offline.html.
 // - API, pagos y webhooks: nunca se cachean.
-const VERSION = 'rm-v1';
+const VERSION = 'rm-v2';
 const STATIC = [
   '/offline.html',
   '/css/martin.css',
+  '/css/movil.css',
+  '/js/movil.js',
   '/icons/icon-192.png',
   '/icons/icon.svg',
   '/vendor/bootstrap/css/bootstrap.min.css',

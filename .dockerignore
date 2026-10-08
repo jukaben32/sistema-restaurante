@@ -8,6 +8,6 @@ npm-debug.log*
 tests
 docs
 dist
-*.md
+README.md
 .vscode
 .idea

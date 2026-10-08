@@ -1,55 +1,77 @@
-<nav class="navbar navbar-expand-lg navbar-dark mb-4" style="background-color:#2c3e50;box-shadow:0 2px 4px rgba(0,0,0,.1);font-size:1.1rem;">
-  <div class="container d-flex align-items-center gap-2 flex-nowrap">
-    <% const u = (typeof user !== 'undefined' && user) ? user : null; %>
-    <% const rol = u ? String(u.rol || '').toLowerCase() : ''; %>
+<%
+  // Menú superior. En computador: fila de íconos con tooltip. En teléfono: botón ☰ que abre una cuadrícula
+  // con ícono + nombre (más fácil de tocar). Los accesos dependen del rol.
+  // Relacionado con: middleware/auth.js (requireRole), app.js (rutaActual), public/css/movil.css, public/js/movil.js
+  const u = (typeof user !== 'undefined' && user) ? user : null;
+  const rol = u ? String(u.rol || '').toLowerCase() : '';
+  const ruta = (typeof rutaActual !== 'undefined' && rutaActual) ? String(rutaActual) : '';
 
-    <a class="navbar-brand fw-bold text-truncate m-0" href="/" style="color:#fff;font-size:1.25rem;max-width:52vw;"><img src="/icons/icon.svg" alt="" width="26" height="26" class="me-2 align-text-bottom">Restaurant Martin</a>
+  const MENU = {
+    administrador: [
+      ['/dashboard', 'bi-speedometer2', 'Dashboard', 'Dashboard'],
+      ['/', 'bi-house-fill', 'Venta rápida', 'Venta rápida'],
+      ['/mesas', 'bi-grid', 'Mesas', 'Mesas'],
+      ['/delivery', 'bi-bicycle', 'Delivery', 'Delivery'],
+      ['/conversaciones', 'bi-chat-dots', 'Chats IA', 'Conversaciones (IA)'],
+      ['/cocina', 'bi-egg-fried', 'Cocina', 'Cocina'],
+      ['/ventas', 'bi-receipt', 'Ventas', 'Historial de ventas'],
+      ['/reservas', 'bi-calendar-check', 'Reservas', 'Reservas'],
+      ['/productos', 'bi-box', 'Productos', 'Gestionar productos'],
+      ['/inventario', 'bi-box-seam', 'Inventario', 'Inventario'],
+      ['/clientes', 'bi-people', 'Clientes', 'Gestionar clientes'],
+      ['/usuarios', 'bi-person-gear', 'Usuarios', 'Usuarios'],
+      ['/configuracion', 'bi-gear', 'Ajustes', 'Configuración'],
+      ['/ayuda', 'bi-question-circle', 'Ayuda', 'Guía de uso']
+    ],
+    mesero: [
+      ['/mesas', 'bi-grid', 'Mesas', 'Mesas'],
+      ['/delivery', 'bi-bicycle', 'Delivery', 'Delivery'],
+      ['/conversaciones', 'bi-chat-dots', 'Chats IA', 'Conversaciones (IA)'],
+      ['/cocina', 'bi-egg-fried', 'Cocina', 'Cocina (listos)'],
+      ['/reservas', 'bi-calendar-check', 'Reservas', 'Reservas'],
+      ['/ayuda', 'bi-question-circle', 'Ayuda', 'Guía de uso']
+    ],
+    cocinero: [
+      ['/cocina', 'bi-egg-fried', 'Cocina', 'Cocina'],
+      ['/ayuda', 'bi-question-circle', 'Ayuda', 'Guía de uso']
+    ]
+  };
+  const items = MENU[rol] || [];
+  const activa = (href) => href === '/' ? (ruta === '/' || ruta === '') : (ruta === href || ruta.startsWith(href + '/'));
+%>
+<nav class="navbar navbar-expand-lg navbar-dark mb-4" style="background-color:#2c3e50;box-shadow:0 2px 4px rgba(0,0,0,.1);">
+  <div class="container">
+    <a class="navbar-brand fw-bold text-truncate m-0" href="/" style="color:#fff;font-size:1.2rem;max-width:calc(100vw - 110px);"><img src="/icons/icon.svg" alt="" width="26" height="26" class="me-2 align-text-bottom">Restaurant Martin</a>
 
-    <div class="d-flex align-items-center gap-2 ms-auto flex-nowrap overflow-auto" style="max-width:46vw; scrollbar-width:none;">
-      <!-- Menú según rol -->
-      <!-- Relacionado con: middleware/auth.js (requireRole) y server.js (protección de rutas) -->
+    <% if (items.length || u) { %>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navPrincipal" aria-controls="navPrincipal" aria-expanded="false" aria-label="Abrir el menú">
+        <span class="navbar-toggler-icon"></span>
+      </button>
 
-      <% if (rol === 'administrador') { %>
-        <a href="/dashboard" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Dashboard"><i class="bi bi-speedometer2"></i></a>
-        <a href="/" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Venta rápida"><i class="bi bi-house-fill"></i></a>
-        <a href="/mesas" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Mesas"><i class="bi bi-grid"></i></a>
-        <a href="/delivery" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Delivery"><i class="bi bi-bicycle"></i></a>
-        <a href="/conversaciones" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Conversaciones (IA)"><i class="bi bi-chat-dots"></i></a>
-        <a href="/cocina" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Cocina"><i class="bi bi-egg-fried"></i></a>
-        <a href="/ventas" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Historial de Ventas"><i class="bi bi-receipt"></i></a>
-        <a href="/reservas" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Reservas"><i class="bi bi-calendar-check"></i></a>
-        <a href="/productos" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Gestionar Productos"><i class="bi bi-box"></i></a>
-        <a href="/inventario" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Inventario"><i class="bi bi-box-seam"></i></a>
-        <a href="/clientes" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Gestionar Clientes"><i class="bi bi-people"></i></a>
-        <a href="/usuarios" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Usuarios"><i class="bi bi-person-gear"></i></a>
-        <a href="/configuracion" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Configuración"><i class="bi bi-gear"></i></a>
-      <% } %>
+      <div class="collapse navbar-collapse" id="navPrincipal">
+        <div class="rm-nav-links">
+          <% items.forEach(function (it) { %>
+            <a href="<%= it[0] %>" class="btn btn-sm <%= activa(it[0]) ? 'btn-light' : 'btn-outline-light' %>" title="<%= it[3] %>" <%- activa(it[0]) ? 'aria-current="page"' : '' %>>
+              <i class="bi <%= it[1] %>"></i><span class="rm-nav-txt"><%= it[2] %></span>
+            </a>
+          <% }); %>
+        </div>
 
-      <% if (rol === 'mesero') { %>
-        <a href="/mesas" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Mesas"><i class="bi bi-grid"></i></a>
-        <a href="/delivery" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Delivery"><i class="bi bi-bicycle"></i></a>
-        <a href="/conversaciones" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Conversaciones (IA)"><i class="bi bi-chat-dots"></i></a>
-        <a href="/cocina" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Cocina (Listos)"><i class="bi bi-egg-fried"></i></a>
-        <a href="/reservas" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Reservas"><i class="bi bi-calendar-check"></i></a>
-      <% } %>
-
-      <% if (rol === 'cocinero') { %>
-        <a href="/cocina" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Cocina"><i class="bi bi-egg-fried"></i></a>
-      <% } %>
-
-      <!-- Usuario + logout -->
-      <% if (u) { %>
-        <div class="vr bg-light opacity-50 mx-1"></div>
-        <span class="badge text-bg-light text-dark d-none d-md-inline-flex" data-bs-toggle="tooltip" title="Usuario actual">
-          <i class="bi bi-person-circle me-1"></i><%= u.usuario %> · <%= rol %>
-        </span>
-        <form method="POST" action="/logout" class="m-0">
-          <button type="submit" class="btn btn-outline-light btn-sm" data-bs-toggle="tooltip" title="Cerrar sesión">
-            <i class="bi bi-box-arrow-right"></i>
-          </button>
-        </form>
-      <% } %>
-    </div>
+        <% if (u) { %>
+          <div class="rm-nav-user">
+            <span class="badge text-bg-light text-dark d-inline-flex align-items-center">
+              <i class="bi bi-person-circle me-1"></i><%= u.usuario %> · <%= rol %>
+            </span>
+            <form method="POST" action="/logout" class="m-0">
+              <button type="submit" class="btn btn-outline-light btn-sm" title="Cerrar sesión">
+                <i class="bi bi-box-arrow-right"></i><span class="d-lg-none ms-2">Salir</span>
+              </button>
+            </form>
+          </div>
+        <% } %>
+      </div>
+    <% } %>
   </div>
 </nav>
 <script src="/js/pwa.js" defer></script>
+<script src="/js/movil.js" defer></script>

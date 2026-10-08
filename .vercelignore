@@ -8,4 +8,4 @@ Dockerfile
 .dockerignore
 docker-compose*.yml
 dist
-*.md
+/README.md

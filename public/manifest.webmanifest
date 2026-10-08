@@ -1,4 +1,5 @@
 {
+  "id": "/",
   "name": "Restaurant Martin POS",
   "short_name": "Martin POS",
   "description": "Mesas, cocina, cobros con Stripe, reservas e inventario de Restaurant Martin",

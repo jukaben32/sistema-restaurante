@@ -36,6 +36,8 @@ Para usarla desde otros equipos de la red local, abre el puerto 3000 en el firew
 | **Inventario**: insumos, recetas por plato con costo y margen, descuento automático al facturar, alertas de stock bajo | `/inventario` | Admin |
 | **Dashboard en vivo**: ventas de hoy vs. ayer, 7 días, más vendidos, mesas, cocina, reservas, stock | `/dashboard` (inicio del admin) | Admin |
 | **Factura por WhatsApp** | Botón en la factura | Todos |
+| **Guía de uso integrada** para quien nunca usó el sistema (por rol, con buscador, imprimible y descargable). El texto está en [ayuda/GUIA-DE-USO.md](ayuda/GUIA-DE-USO.md): se edita con cualquier editor y se actualiza sola en la app | Menú → **Ayuda** (`/ayuda`) | Todos |
+| **Optimizada para Android e iPhone**: menú con botón ☰, zonas seguras del notch, sin zoom molesto en campos, botones táctiles | Todas las pantallas | Todos |
 | **App instalable (PWA)** para celulares y tablets | Menú del navegador → "Instalar" (requiere HTTPS o localhost) | Todos |
 
 ### Delivery y asistentes de IA (voz y WhatsApp)
