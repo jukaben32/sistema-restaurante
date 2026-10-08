@@ -23,6 +23,7 @@
   },
   "scripts": {
     "start": "node server.js",
+    "vapi:sync": "node scripts/vapi-sync.js",
     "dev": "nodemon server.js",
     "build": "pkg . --public --target node18-win-x64"
   },

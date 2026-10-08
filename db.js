@@ -62,7 +62,7 @@ pool.on('error', (err) => {
 });
 
 // Tablas sin columna "id" (no se les agrega RETURNING id en INSERT)
-const TABLES_WITHOUT_ID = new Set(['producto_hijos', 'recetas', 'producto_imagenes', 'horarios']);
+const TABLES_WITHOUT_ID = new Set(['producto_hijos', 'recetas', 'producto_imagenes', 'horarios', 'vapi_tools']);
 
 /**
  * Traduce una sentencia con placeholders "?" (estilo mysql2) a "$n" de PostgreSQL.

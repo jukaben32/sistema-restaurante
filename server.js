@@ -117,6 +117,9 @@ const personal = requireRole(['mesero', 'administrador']);
 app.use(menuRoutes.publico);
 app.use(reservasRoutes.publico);
 
+// Agente de voz (Vapi): webhook público protegido por token (routes/vapi.js)
+app.use(require('./routes/vapi'));
+
 // Personal: avisos del menú QR, hoja de QR, reservas
 app.use(['/api/mesa-alertas', '/mesas-qr', '/api/mesas-qr'], personal);
 app.use(menuRoutes.staff);
