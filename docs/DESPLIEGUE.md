@@ -32,7 +32,7 @@ Genera valores aleatorios largos con `node -e "console.log(require('crypto').ran
 | `DB_TIMEZONE` / `WHATSAPP_CODIGO_PAIS` | `America/Santo_Domingo` / `1` |
 
 ## 3. Publicar
-1. En Dokploy crea un proyecto → **Compose** → origen *Git* con tu fork (`jukaben32/sistema-restaurante`, rama `restaurant-martin`) y el archivo `docker-compose.dokploy.yml`.
+1. En Dokploy crea un proyecto → **Compose** → origen *Git* con tu fork (`jukaben32/sistema-restaurante`, rama `main`) y el archivo `docker-compose.dokploy.yml`.
 2. Pega las variables de la sección 2 y despliega. Las tablas de la base se crean solas al arrancar.
 3. Abre `https://pos.tudominio.com`, entra con tu usuario administrador y **cambia la contraseña** en *Usuarios*.
 
