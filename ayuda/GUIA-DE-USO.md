@@ -533,14 +533,38 @@ Permite cobrar con tarjeta desde el celular del cliente. El dinero va directo a 
 - **El webhook es opcional**: el sistema consulta a Stripe directamente.
 
 #### D2) Pagos con cripto (Bitcoin y Lightning)
-Permite que los clientes paguen escaneando un QR con su billetera de criptomonedas. Usa **BTCPay Server**, un programa **gratuito y de código abierto** que tú controlas: el dinero llega **directo a tu billetera**, sin comisiones de intermediarios.
-1. Ten un **BTCPay Server** (lo más fácil: contratar un hosting de BTCPay ya listo; también se puede instalar en tu servidor). Pídele ayuda a quien te instaló el sistema.
-2. En BTCPay crea una **tienda**, conecta **tu billetera** y activa **Lightning** para pagos instantáneos.
-3. En BTCPay crea una **API key** (*Manage Account → API Keys*) con solo estos permisos, limitada a tu tienda: **ver facturas**, **crear facturas**, **modificar facturas** y **ver tiendas**.
-4. En el sistema: **Ajustes → Pagos con cripto**. Pega la **dirección de tu BTCPay**, el **Store ID** y la **API key**, enciende **Aceptar pagos con cripto**, toca **Probar conexión** y luego **Guardar**.
-- La API key se guarda **cifrada**. Si dejas el campo vacío al guardar, se conserva la anterior.
-- **Moneda:** deja la de tus precios (peso dominicano). Si tu BTCPay no tiene tasa de cambio para ella, elige **USD** y escribe cuántos pesos vale 1 dólar (actualízalo cuando cambie).
-- **Importante:** en la República Dominicana las criptomonedas **no son moneda de curso legal**: nadie está obligado a aceptarlas y su uso es voluntario. Las ganancias al vender cripto se declaran a la DGII. **Consulta con tu contador.**
+**Qué es:** una forma de que los clientes paguen escaneando un **código QR con la billetera de criptomonedas de su celular**, igual que en los restaurantes más modernos. Ellos pagan en **Bitcoin** o en **Lightning** (una forma de pagar Bitcoin que llega **al instante**).
+
+**Cómo funciona, paso a paso:**
+1. El mesero elige **Cripto — Bitcoin ⚡** como forma de pago y el sistema le pide a tu **BTCPay Server** un cobro por el monto.
+2. Aparece un **QR**. El cliente lo escanea con su billetera y confirma.
+3. El sistema **se entera solo** cuando el dinero llega (la ventana dice **"Pago confirmado"**) y emite la factura.
+4. El dinero queda **directo en tu billetera**. No pasa por ninguna empresa en medio y no hay comisión por cada pago (solo la pequeña tarifa normal de la red).
+
+**¿Qué es BTCPay Server?** Es el programa gratuito que "cobra por ti": crea los QR y avisa cuando se pagó. Lo controlas tú. El sistema del restaurante solo se conecta a él.
+
+##### Lo que falta de tu lado (lista de tareas)
+Esto lo hace el **dueño o administrador** una sola vez. Si no te sientes cómodo, pídele ayuda a quien te instaló el sistema.
+- [ ] **1. Tener un BTCPay Server.** Dos caminos: **(a)** contratar un **hosting de BTCPay ya listo** (lo más fácil, sin instalar nada), o **(b)** instalarlo en el servidor del restaurante (necesita unos **2 GB de memoria**). Te dará una **dirección web** (por ejemplo `https://btcpay.mirestaurante.com`).
+- [ ] **2. Crear una cuenta y una "tienda"** dentro de BTCPay.
+- [ ] **3. Conectar tu billetera** a esa tienda (así el dinero llega a ti). Anota las **palabras de recuperación** de tu billetera en papel y guárdalas en un lugar seguro: **quien las tenga, controla el dinero**.
+- [ ] **4. Activar Lightning** en la tienda (recomendado: los pagos pequeños llegan al instante y el cliente no espera).
+- [ ] **5. Poner la velocidad de la tienda en "High speed"** (Settings → Checkout) para que los pagos pequeños en Bitcoin no hagan esperar al cliente.
+- [ ] **6. Crear una API key** (*Manage Account → API Keys → Generate Key*) con **solo** estos cuatro permisos y limitada a tu tienda: **ver facturas**, **crear facturas**, **modificar facturas** y **ver la configuración de la tienda**. (Una "API key" es como una llave que le deja al sistema pedir cobros, nada más.)
+- [ ] **7. Copiar tu Store ID** (*Settings → General*).
+- [ ] **8. Conectarlo al sistema:** **Ajustes → Pagos con cripto**. Pega la **dirección de tu BTCPay**, el **Store ID** y la **API key**; enciende **Aceptar pagos con cripto**; toca **Probar conexión** (debe decir *"Conexión correcta"* con el nombre de tu tienda) y luego **Guardar**.
+- [ ] **9. Hacer una prueba real pequeña** *antes de abrir*: cobra una venta de prueba de unos pocos pesos con **tu propia billetera** y comprueba que el sistema diga **"Pago confirmado"** y que el dinero llegue.
+- [ ] **10. Capacitar al personal** con la sección 4.9 (Cobrar con cripto).
+- [ ] **11. Hablar con tu contador** (ver el aviso legal más abajo).
+- [ ] **12. Solo si usas el asistente de voz (Vapi):** cuando tengas la llave de Vapi, pídele a quien administra el sistema que ejecute `npm run vapi:sync` para que el asistente también ofrezca pagar con cripto.
+
+##### Detalles importantes
+- La API key se guarda **cifrada**. Si dejas ese campo vacío al guardar, se conserva la anterior.
+- **Moneda:** deja la de tus precios (peso dominicano). Si tu BTCPay no tiene tasa de cambio para ella, elige **USD** y escribe cuántos pesos vale 1 dólar; **actualiza ese número cuando cambie**.
+- **Delivery:** el pedido puede quedar con pago **Cripto**; en la tarjeta del pedido toca **Cobro cripto** para ver el QR y enviar el enlace por WhatsApp. Los asistentes de voz y WhatsApp también pueden ofrecerlo (te llegará un aviso de **pago recibido**).
+- **Devoluciones:** el sistema **no devuelve dinero solo**. Si hay que devolver un pago cripto, se hace **a mano** desde tu billetera. Si cancelas un pedido de delivery ya pagado, el sistema te lo recuerda.
+- **El precio en BTC cambia** de un momento a otro. El cobro se fija por un rato corto; si el cliente tarda demasiado, el cobro **vence** y se genera uno nuevo (toca **Cancelar cobro** y repite).
+- **Importante (legal):** en la República Dominicana las criptomonedas **no son moneda de curso legal**: el Banco Central no obliga a nadie a aceptarlas y su uso por un comercio privado es **voluntario**. Las ganancias al **vender** criptomonedas se declaran a la **DGII**. Consulta con tu contador cómo registrar estas ventas.
 
 #### E) QR del menú por mesa
 **Ajustes → QR del menú** (o botón **QR menú** en Mesas).
@@ -621,12 +645,15 @@ El cliente entra a la dirección del restaurante terminada en **/reservar**, eli
 - El cliente llama o escribe al número del restaurante. Un **asistente virtual** contesta **en el idioma del cliente**.
 - Puede pedir el menú, hacer un pedido para **delivery** o **para llevar**, reservar, preguntar horarios y zonas de entrega.
 - El asistente **repite el pedido completo y el total** antes de registrarlo.
-- Si paga con tarjeta, recibe un **enlace seguro** por WhatsApp. **Nunca** se le piden números de tarjeta por llamada o chat.
+- Si paga con tarjeta o con cripto, recibe un **enlace seguro** por WhatsApp. **Nunca** se le piden números de tarjeta por llamada o chat.
 - Si pide **hablar con una persona**, el asistente avisa al personal.
 - Después recibe **mensajes automáticos**: pedido confirmado, en camino y la factura.
 
 ### 7.4 Pagar con un enlace
 Al abrir el enlace, el cliente paga con tarjeta, Apple Pay o Google Pay en la página segura de Stripe. Al terminar ve **"¡Pago recibido!"**. El restaurante se entera al instante.
+
+### 7.5 Pagar con criptomonedas
+Si el restaurante lo tiene activado, el cliente puede pagar con **Bitcoin o Lightning**: escanea el **QR** que le muestra el mesero (o abre el **enlace** que recibe por WhatsApp si pidió delivery), elige pagar con su **billetera** y confirma. Con **Lightning** el pago es **instantáneo**. El restaurante se entera solo cuando el pago llega.
 
 ---
 
@@ -643,6 +670,9 @@ Al abrir el enlace, el cliente paga con tarjeta, Apple Pay o Google Pay en la p�
 | **No puedo eliminar una mesa** | Tiene un pedido activo. Primero cobra la factura o **Liberar mesa**. |
 | **No me deja crear un cliente al facturar** | Es normal para meseros. Usa "Consumidor final" o pide al administrador que lo cree. |
 | **La cocina no recibe un plato** | Falta tocar **Enviar a cocina** (o **Confirmar** en Delivery). |
+| **No aparece la opción "Cripto" al cobrar** | El administrador no ha activado los pagos con cripto o falta algún dato. Revisa **Ajustes → Pagos con cripto**: interruptor encendido, dirección, Store ID y API key guardados. |
+| **"Probar conexión" falla en Pagos con cripto** | Revisa que la **dirección** de tu BTCPay esté bien escrita y abra en el navegador, que el **Store ID** sea el de tu tienda y que la **API key** tenga los 4 permisos. Si dice que no hay tasa de cambio, elige **USD** y escribe la tasa. |
+| **El cobro cripto no se confirma** | Pídele al cliente que **termine el pago** en su billetera. Con Bitcoin normal puede tardar unos minutos (dirá *"Pago detectado, confirmando…"*): espera. Si venció o lo cerró, toca **Cancelar cobro** y genera uno nuevo. Si ya pagó y no aparece, avisa al administrador para revisar en BTCPay. |
 | **El cobro con Stripe no se confirma** | Pide al cliente que termine el pago en su celular. Si lo cerró, toca **Cancelar cobro** y genera uno nuevo. Verifica con el administrador que Stripe esté activado. |
 | **No me deja "Entregado y cobrar" en delivery** | Falta un paso: **Validar pago** (transferencia), o el pago con Stripe aún no se confirmó, o los platos no están listos en cocina. |
 | **No me deja facturar: "Este pedido ya fue facturado"** | Ya se cobró antes. Revisa el historial en **Ventas**. |
@@ -682,6 +712,11 @@ Al abrir el enlace, el cliente paga con tarjeta, Apple Pay o Google Pay en la p�
 | **Rol** | El tipo de usuario: administrador, mesero o cocinero. |
 | **Sesión** | El tiempo que estás "dentro" del sistema con tu usuario. |
 | **Stripe** | El servicio que procesa los pagos con tarjeta por internet. |
+| **Criptomoneda / Bitcoin** | Dinero digital que se paga desde una billetera en el celular, sin banco en medio. |
+| **Lightning** | Una forma de pagar Bitcoin que llega al instante y casi sin costo. |
+| **Billetera (wallet)** | La aplicación donde se guarda el dinero cripto. La del cliente paga; la tuya recibe. |
+| **BTCPay Server** | El programa gratuito que crea los QR de cobro y avisa cuando llegó el pago. Lo controlas tú. |
+| **API key** | Una "llave" que le permite al sistema pedir cobros a otro programa (por ejemplo BTCPay), solo con los permisos que le des. |
 | **Stock** | La cantidad que tienes de algo en inventario. |
 | **Ticket promedio** | Lo que gasta, en promedio, cada cliente. |
 | **Vapi** | El servicio que permite que el asistente conteste llamadas. |
@@ -700,7 +735,7 @@ Al abrir el enlace, el cliente paga con tarjeta, Apple Pay o Google Pay en la p�
 7. **Llena bien Delivery y agentes** (horario, zonas, preguntas frecuentes): es la "memoria" de tus asistentes.
 8. **Revisa las conversaciones** de los asistentes la primera semana y ajusta las **Instrucciones adicionales** si algo no suena como quieres.
 9. **No hagas mensajes masivos** por el WhatsApp conectado al asistente.
-10. **Guarda tus llaves** (Stripe, Vapi, OpenAI) en un lugar seguro y **no las compartas por chat**.
+10. **Guarda tus llaves** (Stripe, BTCPay, Vapi, OpenAI) en un lugar seguro y **no las compartas por chat**. Las **palabras de recuperación** de tu billetera cripto, guárdalas **en papel**, nunca en el celular ni por mensaje.
 11. **Haz copias periódicas** exportando las **Ventas** a Excel.
 
 ---
