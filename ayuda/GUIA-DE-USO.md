@@ -475,6 +475,13 @@ Menú → **Ventas**.
 - Arriba verás **totales por medio de pago** (efectivo, transferencia, tarjeta, QR) y **gráficos**: productos más vendidos, días con más movimiento y horas pico.
 - **Exportar**: descarga un **archivo de Excel** con el detalle, listo para tu contador. Respeta los filtros de fecha.
 
+### 6.6b Datos de demostración (para practicar)
+Mientras el restaurante no abre, el sistema puede traer **datos de ejemplo del mercado dominicano** para que explores y practiques sin miedo: un **menú de unos 65 platos** (sándwiches, pizzas, pica pollo, asado de cerdo, mariscos, postres y bebidas con precios en RD$), **clientes**, **inventario en libras y kilos con recetas**, **ventas de las últimas 2 semanas**, **reservas**, **pedidos de delivery y para llevar** de varias zonas (Bávaro, Cap Cana, Verón…), **mesas ocupadas** y el **horario y preguntas frecuentes** del restaurante.
+- Si están cargados, arriba de cada pantalla verás una **franja amarilla: "Datos de demostración"**.
+- **Para quitarlos** (hazlo antes de abrir): toca **Quitar datos de demostración** en esa franja, escribe **QUITAR** y confirma. Se borra **solo lo de ejemplo**; lo que tú hayas creado **no se toca**. Las facturas, pedidos y demás vuelven a **empezar desde el número 1**.
+- ⚠️ **Mientras estén cargados no registres ventas ni clientes reales**: se mezclarían con los de ejemplo. Primero quita los datos de demostración y después empieza a trabajar de verdad.
+- Los teléfonos y los datos bancarios de ejemplo **no son reales** (empiezan con 809/829/849-555…). Cuando quites la demostración, escribe los tuyos en **Ajustes → Delivery y agentes**.
+
 ### 6.7 Inventario (ingredientes y costos)
 Menú → **Inventario**. Tiene 3 pestañas.
 
@@ -712,6 +719,7 @@ Si el restaurante lo tiene activado, el cliente puede pagar con **Bitcoin o Ligh
 | **Factura** | El comprobante de lo cobrado. |
 | **Hijos (de un producto)** | Opciones de un plato (por ejemplo, el acompañante). |
 | **Insumo** | Un ingrediente o material (carne, arroz, bebidas). |
+| **Datos de demostración** | Información de ejemplo (menú, ventas, clientes…) para practicar. Se quitan con un botón antes de abrir. |
 | **kg / lb** | Kilo y libra, las dos unidades de peso. 1 kg = 2,2046 lb; 1 lb = 0,4536 kg. |
 | **Margen** | El porcentaje de ganancia de un plato. |
 | **Merma** | Producto que se pierde o se daña. |

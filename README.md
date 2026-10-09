@@ -58,6 +58,9 @@ Los pedidos y reservas que toman los asistentes entran **por confirmar**: el per
 3. Para que los clientes vuelvan a una página de confirmación, abre la app con la IP de la PC en la red (ej. `http://192.168.1.20:3000`) o define la URL pública.
 4. Webhook (opcional, si publicas la app en internet): endpoint `https://TU_DOMINIO/stripe/webhook` con los eventos `checkout.session.completed`, `checkout.session.async_payment_succeeded` y `checkout.session.expired`.
 
+### Datos de demostración (mercado dominicano)
+`npm run demo:cargar -- --si` llena la base con un menú de ~65 platos dominicanos (sándwiches, pizzas, pica pollo, asado de cerdo, mariscos…), clientes, inventario en lb/kg con recetas, ventas de 2 semanas, reservas, delivery, mesas ocupadas, horario, zonas y preguntas frecuentes. Todo queda anotado en la tabla `datos_demo`: el administrador lo quita con el botón **Quitar datos de demostración** (franja amarilla en la app) o con `npm run demo:quitar -- --si`, sin tocar datos reales. `npm run demo:estado` muestra si hay datos cargados.
+
 ### Configurar pagos con cripto (BTCPay Server)
 1. Ten un [BTCPay Server](https://btcpayserver.org) (gratis, de código abierto): un hosting de BTCPay o instalado en tu servidor. Crea una tienda, conecta tu billetera y activa Lightning.
 2. En BTCPay crea una API key limitada a tu tienda con los permisos `btcpay.store.canviewinvoices`, `btcpay.store.cancreateinvoice`, `btcpay.store.canmodifyinvoices` y `btcpay.store.canviewstoresettings`.
