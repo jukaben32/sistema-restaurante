@@ -126,6 +126,10 @@ const personal = requireRole(['mesero', 'administrador']);
 app.use(menuRoutes.publico);
 app.use(reservasRoutes.publico);
 
+// App para clientes (instalable): /pedir y /api/pedir (público); configuración en /configuracion/app-clientes (admin)
+const pedirRoutes = require('./routes/pedir');
+app.use(pedirRoutes.publico);
+
 // Agente de voz (Vapi): webhook público protegido por token (routes/vapi.js)
 app.use(require('./routes/vapi'));
 
@@ -150,6 +154,8 @@ app.use('/configuracion/stripe', requireRole('administrador'), stripeRoutes.admi
 // Datos de demostración: estado y botón Quitar (admin)
 app.use('/api/demo', requireRole('administrador'));
 app.use(require('./routes/demo'));
+
+app.use('/configuracion/app-clientes', requireRole('administrador'), pedirRoutes.admin);
 
 // Cripto (BTCPay Server): cobros (personal) y configuración (admin)
 const criptoRoutes = require('./routes/cripto');

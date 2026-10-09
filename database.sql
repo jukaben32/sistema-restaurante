@@ -365,7 +365,7 @@ ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS factura_id INT REFERENCES facturas(
 ALTER TABLE pedidos DROP CONSTRAINT IF EXISTS ck_pedidos_tipo;
 ALTER TABLE pedidos ADD CONSTRAINT ck_pedidos_tipo CHECK (tipo IN ('mesa','delivery','para_llevar'));
 ALTER TABLE pedidos DROP CONSTRAINT IF EXISTS ck_pedidos_origen;
-ALTER TABLE pedidos ADD CONSTRAINT ck_pedidos_origen CHECK (origen IN ('pos','qr','voz','whatsapp'));
+ALTER TABLE pedidos ADD CONSTRAINT ck_pedidos_origen CHECK (origen IN ('pos','qr','voz','whatsapp','app'));
 ALTER TABLE pedidos DROP CONSTRAINT IF EXISTS ck_pedidos_mesa;
 ALTER TABLE pedidos ADD CONSTRAINT ck_pedidos_mesa CHECK (tipo <> 'mesa' OR mesa_id IS NOT NULL);
 ALTER TABLE pedidos DROP CONSTRAINT IF EXISTS ck_pedidos_estado_delivery;
@@ -414,6 +414,14 @@ ALTER TABLE factura_pagos DROP CONSTRAINT IF EXISTS factura_pagos_metodo_check;
 ALTER TABLE factura_pagos ADD CONSTRAINT factura_pagos_metodo_check
     CHECK (metodo IN ('efectivo','transferencia','tarjeta','qr','cripto'));
 ALTER TABLE cripto_pagos ENABLE ROW LEVEL SECURITY;
+
+-- ===== App para clientes (/pedir): pedidos de delivery y para llevar desde el celular del cliente =====
+-- Código secreto para que el cliente vea el estado de SU pedido sin crear cuenta
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS seguimiento_token VARCHAR(40);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_pedidos_seguimiento ON pedidos(seguimiento_token) WHERE seguimiento_token IS NOT NULL;
+-- Plato del día (se destaca arriba en la app) y interruptor general de la app de pedidos
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS plato_del_dia SMALLINT NOT NULL DEFAULT 0;
+ALTER TABLE configuracion_impresion ADD COLUMN IF NOT EXISTS app_pedidos_activa SMALLINT NOT NULL DEFAULT 1;
 
 -- Avisos: ahora también para pedidos de delivery (sin mesa)
 ALTER TABLE mesa_alertas ALTER COLUMN mesa_id DROP NOT NULL;

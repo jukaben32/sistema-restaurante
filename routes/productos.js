@@ -18,6 +18,7 @@ function camposCarta(body) {
     if (Object.prototype.hasOwnProperty.call(body, 'descripcion')) out.descripcion = String(body.descripcion || '').trim().slice(0, 400) || null;
     if (Object.prototype.hasOwnProperty.call(body, 'en_menu')) out.en_menu = Number(body.en_menu) ? 1 : 0;
     if (Object.prototype.hasOwnProperty.call(body, 'disponible')) out.disponible = Number(body.disponible) ? 1 : 0;
+    if (Object.prototype.hasOwnProperty.call(body, 'plato_del_dia')) out.plato_del_dia = Number(body.plato_del_dia) ? 1 : 0;
     return out;
 }
 
@@ -251,10 +252,10 @@ router.post('/', async (req, res) => {
 
         const carta = camposCarta(req.body || {});
         const [result] = await db.query(
-            `INSERT INTO productos (codigo, nombre, precio_kg, precio_unidad, precio_libra, categoria, descripcion, en_menu, disponible)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO productos (codigo, nombre, precio_kg, precio_unidad, precio_libra, categoria, descripcion, en_menu, disponible, plato_del_dia)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [codigo, nombre, precio_kg || 0, precio_unidad || 0, precio_libra || 0,
-             carta.categoria ?? null, carta.descripcion ?? null, carta.en_menu ?? 1, carta.disponible ?? 1]
+             carta.categoria ?? null, carta.descripcion ?? null, carta.en_menu ?? 1, carta.disponible ?? 1, carta.plato_del_dia ?? 0]
         );
 
         res.status(201).json({ 

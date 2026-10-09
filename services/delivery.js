@@ -16,7 +16,7 @@ const { ErrorPublico } = require('./errores');
 
 const TIPOS = ['delivery', 'para_llevar'];
 const METODOS = ['stripe', 'transferencia', 'efectivo', 'cripto'];
-const ORIGENES = ['pos', 'voz', 'whatsapp'];
+const ORIGENES = ['pos', 'voz', 'whatsapp', 'app'];
 
 function codigoPedido(id, tipo) {
     return `${tipo === 'delivery' ? 'DEL' : 'LLEVAR'}-${id}`;
@@ -266,7 +266,10 @@ async function listar(conn = db) {
 }
 
 async function bloquear(conn, id) {
-    const [rows] = await conn.query(`SELECT * FROM pedidos WHERE id = ? AND tipo IN ('delivery','para_llevar') FOR UPDATE`, [id]);
+    const [rows] = await conn.query(`SELECT * FROM pedidos WHERE id = ? AND tipo IN ('delivery','para_llevar') FOR NO KEY UPDATE`, [id]);
+    // FOR NO KEY UPDATE (no FOR UPDATE): sigue bloqueando a otros que modifiquen el pedido, pero deja que otra conexión
+    // inserte avisos o pagos que apuntan a él (clave foránea). Con FOR UPDATE, un pago que llegaba justo al cancelar
+    // o cobrar dejaba la operación esperándose a sí misma.
     if (!rows[0]) throw new ErrorPublico('Pedido no encontrado');
     return rows[0];
 }
@@ -275,6 +278,13 @@ async function bloquear(conn, id) {
 async function confirmar(conn, id, usuario) {
     const p = await bloquear(conn, id);
     if (p.estado_delivery !== 'por_confirmar') throw new ErrorPublico('Este pedido ya fue confirmado o cancelado');
+    // Pedidos de la app con pago en línea: se confirman cuando el cliente ya pagó
+    if (p.origen === 'app' && ['stripe', 'cripto'].includes(p.metodo_pago_previsto)) {
+        const tabla = p.metodo_pago_previsto === 'stripe' ? 'stripe_pagos' : 'cripto_pagos';
+        const col = p.metodo_pago_previsto === 'stripe' ? 'stripe_pago_id' : 'cripto_pago_id';
+        const [pg] = p[col] ? await conn.query(`SELECT estado FROM ${tabla} WHERE id = ?`, [p[col]]) : [[]];
+        if (!pg[0] || !['pagado', 'usado'].includes(pg[0].estado)) throw new ErrorPublico('El cliente aún no ha pagado en línea. Confirma el pedido cuando se vea "Pagado".');
+    }
     await conn.query(
         `UPDATE pedido_items SET estado = 'enviado', enviado_at = NOW() WHERE pedido_id = ? AND estado = 'pendiente'`,
         [id]
@@ -347,7 +357,7 @@ async function validarTransferencia(conn, id) {
 }
 
 /** Genera (o reutiliza) el enlace de pago de Stripe del pedido. Devuelve url y QR. */
-async function cobroStripe(id, { baseUrl, usuario }) {
+async function cobroStripe(id, { baseUrl, usuario, retorno = null }) {
     const [rows] = await db.query(
         `SELECT p.*, sp.estado AS sp_estado, sp.url AS sp_url FROM pedidos p
          LEFT JOIN stripe_pagos sp ON sp.id = p.stripe_pago_id
@@ -367,14 +377,15 @@ async function cobroStripe(id, { baseUrl, usuario }) {
         descripcion: `Pedido ${codigoPedido(id, p.tipo)}`,
         baseUrl,
         usuario,
-        expiraMin: 180
+        expiraMin: 180,
+        retorno
     });
     await db.query(`UPDATE pedidos SET stripe_pago_id = ?, metodo_pago_previsto = 'stripe' WHERE id = ?`, [cobro.id, id]);
     return { estado: 'pendiente', url: cobro.url, qr: cobro.qr, monto: cobro.monto, moneda: cobro.moneda };
 }
 
 /** Genera (o reutiliza) el cobro cripto del pedido. Devuelve el enlace de pago, el QR y los datos de Lightning/Bitcoin. */
-async function cobroCripto(id, { usuario }) {
+async function cobroCripto(id, { usuario, retornoUrl = null }) {
     const [rows] = await db.query(
         `SELECT p.*, cp.estado AS cp_estado, cp.checkout_url AS cp_url, cp.lightning AS cp_ln, cp.onchain AS cp_oc, cp.monto_btc AS cp_btc
          FROM pedidos p LEFT JOIN cripto_pagos cp ON cp.id = p.cripto_pago_id
@@ -388,7 +399,7 @@ async function cobroCripto(id, { usuario }) {
     if (['pendiente', 'procesando'].includes(p.cp_estado) && p.cp_url) {
         return { estado: p.cp_estado, url: p.cp_url, qr: await criptoService.qrDe(p.cp_url), monto: Number(p.total), lightning: p.cp_ln, onchain: p.cp_oc, monto_btc: p.cp_btc };
     }
-    const cobro = await criptoService.crearCobro({ monto: Number(p.total), pedidoId: id, descripcion: `Pedido ${codigoPedido(id, p.tipo)}`, usuario, expiraMin: 180 });
+    const cobro = await criptoService.crearCobro({ monto: Number(p.total), pedidoId: id, descripcion: `Pedido ${codigoPedido(id, p.tipo)}`, usuario, expiraMin: 180, retornoUrl });
     await db.query(`UPDATE pedidos SET cripto_pago_id = ?, metodo_pago_previsto = 'cripto' WHERE id = ?`, [cobro.id, id]);
     return { estado: 'pendiente', url: cobro.url, qr: cobro.qr_checkout, monto: cobro.monto, moneda: cobro.moneda, lightning: cobro.lightning, onchain: cobro.onchain, monto_btc: cobro.monto_btc };
 }

@@ -508,7 +508,8 @@ document.addEventListener('DOMContentLoaded', function() {
             categoria: document.getElementById('categoria').value.trim(),
             descripcion: document.getElementById('descripcion').value.trim(),
             en_menu: document.getElementById('enMenu').checked ? 1 : 0,
-            disponible: document.getElementById('disponible').checked ? 1 : 0
+            disponible: document.getElementById('disponible').checked ? 1 : 0,
+            plato_del_dia: document.getElementById('platoDelDia').checked ? 1 : 0
         };
 
         const productoId = document.getElementById('productoId').value;
@@ -631,6 +632,7 @@ function editarProducto(id) {
             document.getElementById('descripcion').value = producto.descripcion || '';
             document.getElementById('enMenu').checked = Number(producto.en_menu ?? 1) === 1;
             document.getElementById('disponible').checked = Number(producto.disponible ?? 1) === 1;
+            document.getElementById('platoDelDia').checked = Number(producto.plato_del_dia ?? 0) === 1;
             document.getElementById('imagenProducto').value = '';
             mostrarPreviewImagen(producto.tiene_imagen ? `/menu/img/${producto.id}?v=${Date.now()}` : null);
 

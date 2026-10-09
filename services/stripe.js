@@ -96,7 +96,7 @@ async function probarConexion() {
  * Crea un cobro (Checkout Session) y devuelve URL + QR para que el cliente pague desde su celular.
  * baseUrl: URL con la que el cliente vuelve al terminar (config app_url_publica o el host actual).
  */
-async function crearCobro({ monto, pedidoId = null, descripcion, baseUrl, usuario = null, expiraMin = 31 }) {
+async function crearCobro({ monto, pedidoId = null, descripcion, baseUrl, usuario = null, expiraMin = 31, retorno = null }) {
     const cfg = await getStripeConfig();
     if (!cfg.habilitado) throw new StripePublicError('Los pagos con Stripe no están habilitados (Configuración → Stripe)');
     const montoNum = Number(monto);
@@ -114,8 +114,9 @@ async function crearCobro({ monto, pedidoId = null, descripcion, baseUrl, usuari
                 product_data: { name: descripcion || `Consumo en ${cfg.nombreNegocio}` }
             }
         }],
-        success_url: `${base}/pago/estado?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${base}/pago/estado?session_id={CHECKOUT_SESSION_ID}&cancelado=1`,
+        // retorno: ruta a la que vuelve el cliente (ej. la página de seguimiento de su pedido en la app)
+        success_url: retorno ? `${base}${retorno}${retorno.includes('?') ? '&' : '?'}pago=ok` : `${base}/pago/estado?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: retorno ? `${base}${retorno}${retorno.includes('?') ? '&' : '?'}pago=cancelado` : `${base}/pago/estado?session_id={CHECKOUT_SESSION_ID}&cancelado=1`,
         // Stripe permite entre 30 minutos y 24 horas (el delivery usa un enlace de más duración)
         expires_at: Math.floor(Date.now() / 1000) + Math.min(1440, Math.max(31, Number(expiraMin) || 31)) * 60,
         metadata: { origen: 'restaurant-martin-pos', pedido_id: pedidoId ? String(pedidoId) : '' }

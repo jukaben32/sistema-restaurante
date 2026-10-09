@@ -103,12 +103,12 @@ function aMonedaCripto(cfg, monto) {
     return m / cfg.tasa;
 }
 
-async function crearFactura(cfg, monto, descripcion, referencia, expiraMin) {
+async function crearFactura(cfg, monto, descripcion, referencia, expiraMin, redirectURL = null) {
     return btcpay(cfg, 'POST', `/stores/${encodeURIComponent(cfg.storeId)}/invoices`, {
         amount: Number(aMonedaCripto(cfg, monto)).toFixed(2),
         currency: cfg.monedaCripto.toUpperCase(),
         metadata: { orderId: String(referencia || ''), itemDesc: descripcion, origen: 'restaurant-martin-pos' },
-        checkout: { expirationMinutes: Math.min(1440, Math.max(10, Number(expiraMin) || 30)), speedPolicy: 'HighSpeed' }
+        checkout: { expirationMinutes: Math.min(1440, Math.max(10, Number(expiraMin) || 30)), speedPolicy: 'HighSpeed', ...(redirectURL ? { redirectURL, redirectAutomatically: true } : {}) }
     });
 }
 
@@ -133,13 +133,13 @@ async function qrDe(texto) {
 }
 
 /** Crea un cobro y devuelve los enlaces y QR (Lightning y on-chain) para que el cliente pague. */
-async function crearCobro({ monto, pedidoId = null, descripcion, usuario = null, expiraMin = 30 }) {
+async function crearCobro({ monto, pedidoId = null, descripcion, usuario = null, expiraMin = 30, retornoUrl = null }) {
     const cfg = await getCriptoConfig();
     if (!cfg.habilitado) throw new CriptoPublicError('Los pagos con cripto no están habilitados (Configuración → Pagos con cripto)');
     const montoNum = Number(monto);
     if (!Number.isFinite(montoNum) || montoNum <= 0) throw new CriptoPublicError('Monto inválido para cobrar con cripto');
 
-    const inv = await crearFactura(cfg, montoNum, descripcion || `Consumo en ${cfg.nombreNegocio}`, pedidoId ? `pedido-${pedidoId}` : 'pos', expiraMin);
+    const inv = await crearFactura(cfg, montoNum, descripcion || `Consumo en ${cfg.nombreNegocio}`, pedidoId ? `pedido-${pedidoId}` : 'pos', expiraMin, retornoUrl);
     const m = leerMetodos(await btcpay(cfg, 'GET', `/stores/${encodeURIComponent(cfg.storeId)}/invoices/${encodeURIComponent(inv.id)}/payment-methods`).catch(() => []));
     const checkout = inv.checkoutLink || `${cfg.url}/i/${inv.id}`;
 

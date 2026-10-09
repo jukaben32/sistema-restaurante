@@ -286,7 +286,7 @@ Toca **Delivery** en el menú. Es un tablero con **5 columnas**. Cada pedido es 
 
 | Columna | Qué significa | Tu acción |
 |---|---|---|
-| **Por confirmar** | Pedido nuevo (de un cliente por llamada o WhatsApp) que **tú debes revisar**. | **Confirmar** o **Rechazar**. |
+| **Por confirmar** | Pedido nuevo (de un cliente por llamada, WhatsApp o la **App de clientes**) que **tú debes revisar**. | **Confirmar** o **Rechazar**. Si el cliente de la app eligió pagar con **tarjeta o cripto**, el botón dice **"Esperando pago"** hasta que se vea **"Pagado"**: entonces puedes confirmar. |
 | **En cocina** | Ya se envió a la cocina. | Esperar. Verás "X de Y platos listos". |
 | **Listos** | La cocina terminó. | **Salió a entrega** o **Entregar**. |
 | **En camino** | El repartidor salió. | **Entregado y cobrar**. |
@@ -421,6 +421,7 @@ Menú → **Productos**.
    - **Categoría**: por ejemplo *Entradas*, *Platos fuertes*, *Bebidas*, *Postres*. Sirve para ordenar la carta.
    - **Mostrar en el menú**: si está apagado, el cliente **no** lo ve ni los asistentes lo ofrecen.
    - **Disponible**: apágalo cuando se **agote**. Aparecerá como **Agotado** y nadie podrá pedirlo.
+   - **⭐ Plato del día**: enciéndelo en los platos que quieras **destacar arriba** de la app de clientes ("Hoy en tu restaurante"). Puedes marcar uno o varios y cambiarlos cada día.
    - **Descripción**: ingredientes, porción, alérgenos.
    - **Foto**: JPG, PNG o WebP de hasta 3 MB. Toca la **✕** para quitarla.
 6. Toca **Guardar**.
@@ -474,6 +475,28 @@ Menú → **Ventas**.
 - **Reimprimir factura** (impresora).
 - Arriba verás **totales por medio de pago** (efectivo, transferencia, tarjeta, QR) y **gráficos**: productos más vendidos, días con más movimiento y horas pico.
 - **Exportar**: descarga un **archivo de Excel** con el detalle, listo para tu contador. Respeta los filtros de fecha.
+
+### 6.6a App para clientes (pedidos desde el celular)
+**Qué es:** una página que se **instala como una app** en el celular del cliente (sin tienda de aplicaciones). Con ella tus clientes **ven el menú y el plato del día, piden a domicilio o para recoger y pagan** con tarjeta, Apple Pay o Google Pay, criptomonedas, transferencia o efectivo. Es ideal para **campañas de marketing**: compartes un enlace o un QR y listo.
+
+**Dónde está:** **Ajustes → App de clientes**. Allí encuentras:
+- El **enlace de tu app** (con botón **Copiar**) y su **código QR** (con botón **Descargar QR**) para imprimir en volantes, mesas y empaques.
+- El interruptor **"Recibir pedidos desde la app"**: si lo apagas, el menú se sigue viendo pero no se puede pedir (útil para pausar si estás muy lleno).
+- Una lista **"Antes de lanzar tu campaña"** que te dice si tienes productos publicados, zonas de entrega y qué formas de pago están activas.
+
+**Lo que debes dejar listo antes de compartirla:**
+1. **Productos** con **Mostrar en el menú** encendido, buenas **fotos y descripciones**, y **Disponible** apagado en lo que se haya agotado.
+2. **⭐ Plato del día** en los platos que quieras destacar.
+3. **Horario, zonas de entrega con su costo y pedido mínimo** en **Ajustes → Delivery y agentes**. **Fuera de horario la app no recibe pedidos.**
+4. **Formas de pago:** *Efectivo* siempre está. Para **transferencia** escribe tus datos bancarios en *Delivery y agentes*; para **tarjeta** activa *Pagos con Stripe*; para **cripto** activa *Pagos con cripto*.
+
+**Cómo llega un pedido:** aparece en **Delivery** como **Por confirmar**, con un **aviso con sonido** y la etiqueta **App**. Si el cliente pagó en línea verás **"Pagado"** y puedes confirmar; si no ha pagado, el botón dice **"Esperando pago"**. Si no paga en **1 hora**, el pedido se cancela solo. El cliente sigue su pedido en la misma app (recibido → preparando → listo → en camino → entregado).
+
+**Para medir tus campañas:** agrega una etiqueta al enlace, por ejemplo `.../pedir?utm_source=instagram`.
+
+**Protecciones:** el cliente **no necesita cuenta** (solo nombre y teléfono); los **precios siempre salen del sistema**, nunca del celular del cliente; y hay límites contra pedidos falsos repetidos. Aun así, **tú confirmas cada pedido** antes de que pase a cocina, igual que con los asistentes.
+
+> 💡 Si un cliente te dice que pagó y no ves "Pagado", espera unos segundos y refresca; si sigue igual, revisa tu panel de Stripe o BTCPay. Las **devoluciones** se hacen **a mano** desde Stripe o BTCPay.
 
 ### 6.6b Datos de demostración (para practicar)
 Mientras el restaurante no abre, el sistema puede traer **datos de ejemplo del mercado dominicano** para que explores y practiques sin miedo: un **menú de unos 65 platos** (sándwiches, pizzas, pica pollo, asado de cerdo, mariscos, postres y bebidas con precios en RD$), **clientes**, **inventario en libras y kilos con recetas**, **ventas de las últimas 2 semanas**, **reservas**, **pedidos de delivery y para llevar** de varias zonas (Bávaro, Cap Cana, Verón…), **mesas ocupadas** y el **horario y preguntas frecuentes** del restaurante.
@@ -655,6 +678,13 @@ Esta parte te sirve para **explicarle a tus clientes** cómo usar los servicios.
 6. Los botones de arriba: **Llamar mesero** y **Pedir la cuenta** (elige cómo pagará).
 > Su pedido **no empieza a prepararse** hasta que un mesero lo confirme.
 
+### 7.0 Pedir desde la app del restaurante
+1. El cliente abre tu **enlace** (o escanea tu **QR**) y toca **Instalar app** para tenerla en su pantalla de inicio (en iPhone: **Compartir → Añadir a pantalla de inicio**).
+2. Ve el **plato del día** y el menú por categorías, y toca **+** para armar su pedido.
+3. Toca **Ver mi pedido**, elige **A domicilio** o **Para recoger**, escribe su **nombre, teléfono y dirección** (y la **zona**, que define el envío) y elige **cómo pagar**.
+4. Toca **Enviar pedido**. Si eligió **tarjeta o cripto**, lo lleva a una **página de pago segura**; al terminar vuelve a la app. Si eligió **transferencia**, ve tus datos bancarios y envía la foto del comprobante por WhatsApp.
+5. En **"Tu pedido"** ve en qué paso va y puede **cancelar** mientras el restaurante no lo haya confirmado. Si ya se confirmó, debe llamar al restaurante.
+
 ### 7.2 Reservar por internet
 El cliente entra a la dirección del restaurante terminada en **/reservar**, elige **cuántas personas**, **fecha y hora**, escribe su **nombre** y **teléfono o correo**, y toca **Solicitar reserva**. Verá "¡Solicitud recibida!". El restaurante la confirma después.
 
@@ -687,6 +717,8 @@ Si el restaurante lo tiene activado, el cliente puede pagar con **Bitcoin o Ligh
 | **No puedo eliminar una mesa** | Tiene un pedido activo. Primero cobra la factura o **Liberar mesa**. |
 | **No me deja crear un cliente al facturar** | Es normal para meseros. Usa "Consumidor final" o pide al administrador que lo cree. |
 | **La cocina no recibe un plato** | Falta tocar **Enviar a cocina** (o **Confirmar** en Delivery). |
+| **Un cliente dice que la app no le deja pedir** | Revisa que **Recibir pedidos desde la app** esté encendido (**Ajustes → App de clientes**), que **estés dentro del horario** y que la **zona** y el **pedido mínimo** sean correctos. Si pidió varios pedidos seguidos con el mismo teléfono, el sistema lo frena unos minutos. |
+| **Un pedido de la app dice "Esperando pago"** | El cliente eligió tarjeta o cripto y aún no ha pagado. No lo confirmes hasta ver **"Pagado"**. Si pasa **1 hora** sin pagar, se cancela solo. |
 | **No aparece la opción "Cripto" al cobrar** | El administrador no ha activado los pagos con cripto o falta algún dato. Revisa **Ajustes → Pagos con cripto**: interruptor encendido, dirección, Store ID y API key guardados. |
 | **"Probar conexión" falla en Pagos con cripto** | Revisa que la **dirección** de tu BTCPay esté bien escrita y abra en el navegador, que el **Store ID** sea el de tu tienda y que la **API key** tenga los 4 permisos. Si dice que no hay tasa de cambio, elige **USD** y escribe la tasa. |
 | **El cobro cripto no se confirma** | Pídele al cliente que **termine el pago** en su billetera. Con Bitcoin normal puede tardar unos minutos (dirá *"Pago detectado, confirmando…"*): espera. Si venció o lo cerró, toca **Cancelar cobro** y genera uno nuevo. Si ya pagó y no aparece, avisa al administrador para revisar en BTCPay. |
@@ -719,6 +751,7 @@ Si el restaurante lo tiene activado, el cliente puede pagar con **Bitcoin o Ligh
 | **Factura** | El comprobante de lo cobrado. |
 | **Hijos (de un producto)** | Opciones de un plato (por ejemplo, el acompañante). |
 | **Insumo** | Un ingrediente o material (carne, arroz, bebidas). |
+| **App instalable** | Una página web que el cliente "instala" en su celular y se abre como una app, sin descargarla de una tienda. |
 | **Datos de demostración** | Información de ejemplo (menú, ventas, clientes…) para practicar. Se quitan con un botón antes de abrir. |
 | **kg / lb** | Kilo y libra, las dos unidades de peso. 1 kg = 2,2046 lb; 1 lb = 0,4536 kg. |
 | **Margen** | El porcentaje de ganancia de un plato. |

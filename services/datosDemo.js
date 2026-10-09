@@ -249,9 +249,9 @@ async function cargar(db, log = () => {}) {
         // ---- Productos
         const [maxCli] = await c.query('SELECT COALESCE(MAX(id), 0) AS m FROM clientes');
         const maxClienteAntes = Number(maxCli[0].m);
-        const filasProd = PRODUCTOS.map((p, i) => [`DEMO-${String(i + 1).padStart(3, '0')}`, p[0], 0, p[2], 0, p[1], p[3], p[0] === 'Filete de Pescado al Coco' ? 0 : 1, 1]);
+        const filasProd = PRODUCTOS.map((p, i) => [`DEMO-${String(i + 1).padStart(3, '0')}`, p[0], 0, p[2], 0, p[1], p[3], p[0] === 'Filete de Pescado al Coco' ? 0 : 1, 1, ['Asado de Cerdo con Moro', 'Pica Pollo con Tostones'].includes(p[0]) ? 1 : 0]);
         // (un producto queda "agotado" para que se vea cómo luce en el menú)
-        const [hp] = await c.query('INSERT INTO productos (codigo, nombre, precio_kg, precio_unidad, precio_libra, categoria, descripcion, disponible, en_menu) VALUES ?', [filasProd]);
+        const [hp] = await c.query('INSERT INTO productos (codigo, nombre, precio_kg, precio_unidad, precio_libra, categoria, descripcion, disponible, en_menu, plato_del_dia) VALUES ?', [filasProd]);
         const prodIds = idsDe(hp);
         await reg('productos', prodIds);
         const prodPorNombre = new Map(PRODUCTOS.map((p, i) => [p[0], { id: prodIds[i], precio: p[2], categoria: p[1] }]));

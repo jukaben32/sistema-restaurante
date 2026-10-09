@@ -23,7 +23,7 @@
     return min < 1 ? 'ahora' : min < 60 ? `hace ${min} min` : `hace ${Math.floor(min / 60)} h ${min % 60} min`;
   }
 
-  const ORIGEN = { pos: ['POS', ''], voz: ['Llamada', 'accent'], whatsapp: ['WhatsApp', 'ok'] };
+  const ORIGEN = { pos: ['POS', ''], voz: ['Llamada', 'accent'], whatsapp: ['WhatsApp', 'ok'], app: ['App', 'accent'] };
 
   function chipPago(p) {
     if (p.metodo_pago_previsto === 'stripe') {
@@ -54,8 +54,12 @@
     const stripePend = p.metodo_pago_previsto === 'stripe' && !['pagado', 'usado'].includes(p.stripe_estado);
     const criptoPend = p.metodo_pago_previsto === 'cripto' && !['pagado', 'usado'].includes(p.cripto_estado);
     const btns = [];
+    // Pedidos de la app con pago en línea: se confirman cuando ya aparece "Pagado"
+    const sinPagar = p.origen === 'app' && ((p.metodo_pago_previsto === 'stripe' && !['pagado', 'usado'].includes(p.stripe_estado)) || (p.metodo_pago_previsto === 'cripto' && !['pagado', 'usado'].includes(p.cripto_estado)));
     if (col === 'por_confirmar') {
-      btns.push('<button class="btn btn-sm btn-success" data-a="confirmar"><i class="bi bi-check2"></i> Confirmar</button>');
+      btns.push(sinPagar
+        ? '<button class="btn btn-sm btn-success" disabled title="El cliente aún no ha pagado en línea"><i class="bi bi-hourglass-split"></i> Esperando pago</button>'
+        : '<button class="btn btn-sm btn-success" data-a="confirmar"><i class="bi bi-check2"></i> Confirmar</button>');
       btns.push('<button class="btn btn-sm btn-outline-danger" data-a="cancelar">Rechazar</button>');
     }
     if (['por_confirmar', 'en_cocina', 'listo', 'en_camino'].includes(col)) {

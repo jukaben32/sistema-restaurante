@@ -30,9 +30,10 @@ async function mantenimiento(req, res) {
     try {
         const recordatorios = await avisos.enviarRecordatorios();
         const criptoSync = await require('../services/cripto').sincronizarPendientes().catch(() => 0);
+        const sinPagar = await require('../services/appClientes').limpiarSinPago().catch(() => 0);
         const [s] = await db.query('DELETE FROM user_sessions WHERE expire < NOW()');
         const [w] = await db.query(`DELETE FROM wa_ids WHERE created_at < NOW() - interval '2 days'`);
-        res.json({ ok: true, recordatorios, cobros_cripto_sincronizados: criptoSync, sesiones_borradas: s.affectedRows, ids_borrados: w.affectedRows });
+        res.json({ ok: true, recordatorios, cobros_cripto_sincronizados: criptoSync, pedidos_app_sin_pagar_cancelados: sinPagar, sesiones_borradas: s.affectedRows, ids_borrados: w.affectedRows });
     } catch (e) {
         console.error('Error en el mantenimiento programado:', e);
         res.status(500).json({ error: 'Error en el mantenimiento' });

@@ -58,6 +58,9 @@ Los pedidos y reservas que toman los asistentes entran **por confirmar**: el per
 3. Para que los clientes vuelvan a una página de confirmación, abre la app con la IP de la PC en la red (ej. `http://192.168.1.20:3000`) o define la URL pública.
 4. Webhook (opcional, si publicas la app en internet): endpoint `https://TU_DOMINIO/stripe/webhook` con los eventos `checkout.session.completed`, `checkout.session.async_payment_succeeded` y `checkout.session.expired`.
 
+### App para clientes (instalable, para campañas)
+`/pedir` es una app instalable (PWA) **sin cuenta**: el cliente ve el menú y el **plato del día**, pide **a domicilio o para recoger** y paga con **tarjeta (Stripe), cripto (BTCPay), transferencia o efectivo**. Los pedidos entran a Delivery con origen `app` como *por confirmar* (con aviso sonoro); los de pago en línea solo se pueden confirmar cuando figuran como **Pagado**, y si no pagan en 1 hora se cancelan solos. El cliente sigue su pedido en `/pedir/pedido/<token>`. En **Configuración → App de clientes** están el enlace, el QR para campañas y el interruptor. Protecciones: precios siempre de la base de datos, token secreto por pedido, límites por teléfono e IP, solo dentro del horario.
+
 ### Datos de demostración (mercado dominicano)
 `npm run demo:cargar -- --si` llena la base con un menú de ~65 platos dominicanos (sándwiches, pizzas, pica pollo, asado de cerdo, mariscos…), clientes, inventario en lb/kg con recetas, ventas de 2 semanas, reservas, delivery, mesas ocupadas, horario, zonas y preguntas frecuentes. Todo queda anotado en la tabla `datos_demo`: el administrador lo quita con el botón **Quitar datos de demostración** (franja amarilla en la app) o con `npm run demo:quitar -- --si`, sin tocar datos reales. `npm run demo:estado` muestra si hay datos cargados.
 

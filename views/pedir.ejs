@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#1f2933">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="<%= negocio.nombre %>">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="robots" content="noindex">
+    <title>Pide en <%= negocio.nombre %></title>
+    <link rel="manifest" href="/pedir/manifest.webmanifest">
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/martin.css">
+    <link rel="stylesheet" href="/css/movil.css">
+    <link rel="stylesheet" href="/css/cliente.css">
+</head>
+<body class="cli">
+<div class="c-wrap" id="app">
+    <header class="c-hero">
+        <div class="d-flex align-items-center gap-3">
+            <% if (negocio.tieneLogo) { %><img class="logo" src="/menu/logo" alt=""><% } %>
+            <div class="flex-grow-1 min-w-0">
+                <h1><%= negocio.nombre %></h1>
+                <span class="c-estado" id="estadoAbierto"><span class="punto"></span><span id="estadoTxt">Cargando…</span></span>
+            </div>
+            <button class="c-instalar d-none" id="btnInstalar" type="button"><i class="bi bi-download me-1"></i>Instalar app</button>
+        </div>
+    </header>
+
+    <div id="avisos"></div>
+    <div id="vistaMenu"></div>
+    <div id="vistaPedido" class="d-none"></div>
+
+    <footer class="c-foot">
+        <% if (negocio.telefono) { %><div><i class="bi bi-telephone me-1"></i><a class="link-secondary" href="tel:<%= negocio.telefono %>"><%= negocio.telefono %></a></div><% } %>
+        <% if (negocio.direccion) { %><div class="mt-1"><i class="bi bi-geo-alt me-1"></i><%= negocio.direccion %></div><% } %>
+        <a href="/reservar" class="link-secondary d-inline-block mt-2"><i class="bi bi-calendar-heart me-1"></i>Reserva una mesa</a>
+    </footer>
+</div>
+
+<div class="c-bar d-none" id="barCarrito">
+    <button class="btn btn-rm" type="button" id="btnVerCarrito">
+        <span><i class="bi bi-bag me-2"></i>Ver mi pedido (<span id="barCant">0</span>)</span>
+        <span id="barTotal" class="num"></span>
+    </button>
+</div>
+
+<!-- Carrito y datos del pedido -->
+<div class="offcanvas offcanvas-bottom" tabindex="-1" id="carrito" style="height: auto; max-height: 92vh; border-radius: 18px 18px 0 0;">
+    <div class="offcanvas-header pb-2">
+        <h5 class="offcanvas-title fw-bold">Tu pedido</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+    </div>
+    <div class="offcanvas-body pt-0">
+        <div id="carritoLista" class="vstack gap-2 mb-3"></div>
+
+        <div class="c-tipo mb-3" id="tipoPedido">
+            <div><input type="radio" name="tipo" id="tipoDelivery" value="delivery" checked><label for="tipoDelivery"><i class="bi bi-bicycle d-block fs-4"></i>A domicilio</label></div>
+            <div><input type="radio" name="tipo" id="tipoLlevar" value="para_llevar"><label for="tipoLlevar"><i class="bi bi-bag-check d-block fs-4"></i>Para recoger</label></div>
+        </div>
+
+        <div class="row g-2">
+            <div class="col-12 col-sm-6"><label class="form-label small fw-semibold" for="cNombre">Tu nombre</label><input id="cNombre" class="form-control" maxlength="60" autocomplete="name"></div>
+            <div class="col-12 col-sm-6"><label class="form-label small fw-semibold" for="cTelefono">Teléfono / WhatsApp</label><input id="cTelefono" class="form-control" type="tel" inputmode="tel" maxlength="20" autocomplete="tel" placeholder="809 555 0100"></div>
+        </div>
+        <div id="datosDelivery" class="row g-2 mt-0">
+            <div class="col-12"><label class="form-label small fw-semibold" for="cZona">Zona de entrega</label><select id="cZona" class="form-select"></select></div>
+            <div class="col-12"><label class="form-label small fw-semibold" for="cDireccion">Dirección</label><input id="cDireccion" class="form-control" maxlength="300" autocomplete="street-address" placeholder="Calle, número, sector, hotel o villa"></div>
+            <div class="col-12"><label class="form-label small fw-semibold" for="cReferencia">Referencia <span class="text-muted fw-normal">(opcional)</span></label><input id="cReferencia" class="form-control" maxlength="300" placeholder="Ej: frente al colmado, portón negro"></div>
+        </div>
+        <div class="mt-2"><label class="form-label small fw-semibold" for="cNotas">Notas para el restaurante <span class="text-muted fw-normal">(opcional)</span></label><input id="cNotas" class="form-control" maxlength="300" placeholder="Ej: sin picante, alergia a mariscos"></div>
+
+        <div class="fw-semibold small mt-3 mb-2">¿Cómo vas a pagar?</div>
+        <div id="formasPago"></div>
+
+        <div class="c-resumen mt-3" id="resumen"></div>
+        <button class="btn btn-rm w-100 mt-3 py-3 fw-bold" id="btnEnviar" type="button"><i class="bi bi-send me-1"></i><span id="btnEnviarTxt">Enviar pedido</span></button>
+        <p class="small text-muted text-center mt-2 mb-0" id="notaEnvio">Tu pedido llega al restaurante y lo confirmamos enseguida.</p>
+    </div>
+</div>
+
+<script>window.APP_PEDIR = { token: <%- JSON.stringify(token) %> };</script>
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
+<script src="/js/pedir.js"></script>
+</body>
+</html>

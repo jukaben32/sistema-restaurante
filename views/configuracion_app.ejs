@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('partials/head') %>
+    <title>App de clientes · Restaurant Martin</title>
+</head>
+<body class="rm">
+    <%- include('partials/navbar') %>
+
+    <main class="rm-page container pb-5" style="max-width: 920px;">
+        <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+            <div>
+                <h1 class="rm-title h3"><i class="bi bi-phone me-2" style="color:var(--rm-accent)"></i>App de clientes</h1>
+                <p class="rm-sub">Tus clientes piden a domicilio o para recoger desde su celular, ven el plato del día y pagan con tarjeta, cripto, transferencia o efectivo. Se instala como una app, sin tienda de aplicaciones.</p>
+            </div>
+            <a href="/configuracion" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Configuración</a>
+        </div>
+
+        <div class="rm-card mb-3">
+            <div class="rm-card-b d-flex align-items-center gap-3 flex-wrap">
+                <div class="form-check form-switch m-0">
+                    <input class="form-check-input" type="checkbox" role="switch" id="activa" <%= activa ? 'checked' : '' %>>
+                    <label class="form-check-label fw-semibold" for="activa">Recibir pedidos desde la app</label>
+                </div>
+                <span class="small text-muted">Si lo apagas, el menú se sigue viendo pero no se puede pedir.</span>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-7">
+                <div class="rm-card h-100">
+                    <div class="rm-card-h"><i class="bi bi-link-45deg"></i><h2>El enlace de tu app</h2></div>
+                    <div class="rm-card-b">
+                        <p class="small text-muted mb-2">Compártelo en tus campañas, Instagram, WhatsApp, tarjetas y letreros. Quien lo abra puede <b>instalar la app</b> con el botón "Instalar app".</p>
+                        <div class="input-group mb-2">
+                            <input class="form-control font-monospace" id="enlace" value="<%= enlace %>" readonly>
+                            <button class="btn btn-outline-secondary" type="button" id="copiar"><i class="bi bi-clipboard"></i> Copiar</button>
+                        </div>
+                        <a class="btn btn-rm btn-sm" href="<%= enlace %>" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i>Abrir la app</a>
+                        <hr>
+                        <div class="small fw-semibold mb-1">Para saber de dónde vienen tus pedidos</div>
+                        <p class="small text-muted mb-0">Agrega una etiqueta al enlace en cada campaña, por ejemplo <code><%= enlace %>?utm_source=instagram</code>. Los pedidos entran al tablero de <b>Delivery</b> con el chip <b>App</b>.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="rm-card h-100 text-center">
+                    <div class="rm-card-h"><i class="bi bi-qr-code"></i><h2>Código QR</h2></div>
+                    <div class="rm-card-b">
+                        <img src="<%= qr %>" alt="Código QR de la app" style="width:100%;max-width:260px">
+                        <div class="small text-muted my-2">Imprímelo en volantes, mesas y empaques.</div>
+                        <a class="btn btn-outline-secondary btn-sm" href="<%= qr %>" download="qr-app-clientes.png"><i class="bi bi-download me-1"></i>Descargar QR</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="rm-card mt-3">
+            <div class="rm-card-h"><i class="bi bi-list-check"></i><h2>Antes de lanzar tu campaña</h2></div>
+            <div class="rm-card-b">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2"><i class="bi bi-<%= productos > 0 ? 'check-circle-fill text-success' : 'x-circle-fill text-danger' %> me-2"></i><b><%= productos %></b> productos publicados en el menú <a href="/productos" class="small ms-1">Productos</a></li>
+                    <li class="mb-2"><i class="bi bi-<%= platosDelDia > 0 ? 'check-circle-fill text-success' : 'dash-circle text-muted' %> me-2"></i><%= platosDelDia > 0 ? platosDelDia + ' plato(s) del día destacado(s)' : 'Ningún plato del día (opcional): marca ⭐ "Plato del día" al editar un producto' %></li>
+                    <li class="mb-2"><i class="bi bi-<%= zonas > 0 ? 'check-circle-fill text-success' : 'x-circle-fill text-danger' %> me-2"></i><b><%= zonas %></b> zonas de entrega con su costo <a href="/configuracion/agentes" class="small ms-1">Delivery y agentes</a></li>
+                    <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Formas de pago activas:
+                        <% formas.forEach(function (f) { %><span class="rm-chip ok ms-1"><%= f.nombre %></span><% }); %>
+                    </li>
+                    <li class="small text-muted ms-4">Para ofrecer tarjeta activa <a href="/configuracion/stripe">Pagos con Stripe</a>; para cripto, <a href="/configuracion/cripto">Pagos con cripto</a>; para transferencia, escribe tus datos bancarios en <a href="/configuracion/agentes">Delivery y agentes</a>.</li>
+                    <li class="mt-2"><i class="bi bi-info-circle me-2 text-muted"></i>Cada pedido de la app aparece en <a href="/delivery">Delivery</a> como <b>por confirmar</b> con un aviso sonoro. Si el cliente pagó en línea, lo confirmas cuando veas <b>"Pagado"</b>.</li>
+                </ul>
+            </div>
+        </div>
+    </main>
+
+    <%- include('partials/footer') %>
+
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
+    <script>
+    (function () {
+        const $ = (id) => document.getElementById(id);
+        $('copiar').addEventListener('click', async () => {
+            try { await navigator.clipboard.writeText($('enlace').value); Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Copiado', timer: 1500, showConfirmButton: false }); } catch (_) {}
+        });
+        $('activa').addEventListener('change', async () => {
+            try {
+                const r = await fetch('/configuracion/app-clientes', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ activa: $('activa').checked ? '1' : '0' }) });
+                if (!r.ok) throw new Error('No se pudo guardar');
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: $('activa').checked ? 'Pedidos activados' : 'Pedidos pausados', timer: 1600, showConfirmButton: false });
+            } catch (e) { $('activa').checked = !$('activa').checked; Swal.fire({ icon: 'error', title: e.message }); }
+        });
+    })();
+    </script>
+</body>
+</html>
