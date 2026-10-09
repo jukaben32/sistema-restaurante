@@ -27,6 +27,7 @@ Es un programa que se usa **desde un navegador** (como cuando entras a Facebook 
 - **Inventario**: control de ingredientes y cuánto cuesta cada plato.
 - **Ventas y reportes**: cuánto se vendió, qué se vendió más, a qué hora.
 - **Menú digital con código QR**: el cliente pide desde su celular.
+- **App para clientes** (instalable en el celular): los clientes ven el **plato del día**, piden **a domicilio o para recoger** y **pagan en línea**. Ideal para campañas de marketing (ver 6.6a).
 - **Asistentes de inteligencia artificial**: uno contesta las **llamadas** y otro los mensajes de **WhatsApp** para tomar pedidos y reservas.
 
 ### 1.2 ¿Qué necesito para usarlo?
