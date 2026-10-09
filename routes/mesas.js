@@ -1155,6 +1155,29 @@ router.put('/pedidos/:pedidoId/mover', async (req, res) => {
     }
 });
 
+// PUT /mesas/:mesaId/entregar - Marca como servidos todos los items "listo" de la mesa (botón "Entregar mesa" de Cocina)
+router.put('/:mesaId/entregar', async (req, res) => {
+    try {
+        const [r] = await db.query(
+            `UPDATE pedido_items SET estado = 'servido', servido_at = NOW()
+             WHERE estado = 'listo'
+               AND pedido_id IN (SELECT id FROM pedidos WHERE mesa_id = ? AND estado NOT IN ('cerrado','cancelado','rechazado'))`,
+            [req.params.mesaId]
+        );
+        if ((r?.affectedRows || 0) === 0) return res.status(400).json({ error: 'No hay platos listos para entregar en esta mesa' });
+        const connection = await db.getConnection();
+        try {
+            await syncMesaEstadoByItems(connection, req.params.mesaId);
+        } finally {
+            connection.release();
+        }
+        res.json({ message: 'Mesa entregada', entregados: r.affectedRows });
+    } catch (error) {
+        console.error('Error al entregar mesa:', error);
+        res.status(500).json({ error: 'Error al entregar la mesa' });
+    }
+});
+
 // PUT /mesas/:mesaId/liberar - Libera mesa si no tiene items en pedidos abiertos
 router.put('/:mesaId/liberar', async (req, res) => {
     const mesaId = req.params.mesaId;
