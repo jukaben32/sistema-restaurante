@@ -479,7 +479,7 @@ Menú → **Ventas**.
 Menú → **Inventario**. Tiene 3 pestañas.
 
 **Insumos**
-1. Toca **Nuevo insumo**: **Nombre** (carne de res), **Unidad** (kg, und, l…), **Stock inicial**, **Stock mínimo** (cuando baje de ahí avisa) y **Costo por unidad**. Guarda.
+1. Toca **Nuevo insumo**: **Nombre** (carne de res), **Unidad** (**kg**, **lb**, und, l…; ver "Kilos o libras" más abajo), **Stock inicial**, **Stock mínimo** (cuando baje de ahí avisa) y **Costo por unidad**. Guarda.
 2. En cada fila: ➕ **Entrada** (compraste), ➖ **Salida / merma** (se dañó o se perdió), 📋 **Ajuste por conteo** (contaste y hay otra cantidad), ✏️ editar y 🗑️ eliminar.
 3. Las tarjetas de arriba muestran **cuántos insumos** tienes, cuántos están en **Stock bajo**, el **Valor del inventario** y el **Margen promedio**.
 
@@ -490,6 +490,16 @@ Menú → **Inventario**. Tiene 3 pestañas.
 4. **Magia:** cada vez que se **factura** un plato con receta, el sistema **descuenta solo** los ingredientes.
 
 **Movimientos:** historial de cada entrada, salida, ajuste y venta, con fecha y quién lo hizo.
+
+**Kilos o libras (tú eliges)**
+Cada insumo se mide en **una** unidad: **kg** (kilos) o **lb** (libras), la que más uses. Puedes cambiarla cuando quieras y el sistema hace las cuentas por ti (**1 kg = 2,2046 lb**):
+- **Cambiar un insumo de kg a lb (o al revés):** en su fila toca el botón **⇄ a lb** (o **⇄ a kg**). Te muestra cómo quedaría el stock y, si estás de acuerdo, toca **Sí, convertir**. Se convierten **solos** el **stock**, el **mínimo**, el **costo por unidad**, las **recetas** y el **historial**. El **costo de tus platos y los márgenes no cambian**: es el mismo producto, solo medido distinto.
+- **Comprar en una unidad distinta a la del insumo:** al registrar una **Entrada** (o Salida / Ajuste) hay una casilla de unidad junto a la cantidad. Si el pollo está en kilos pero te lo vendieron en libras, escribe **22** y elige **lb**: el sistema lo convierte y suma lo que corresponde.
+- **Recetas:** en cada ingrediente de una receta también puedes elegir la unidad. Si el insumo está en kilos pero tu receta usa **1 lb** de pollo por plato, escribe **1** y elige **lb**.
+- También puedes cambiar la unidad desde **✏️ Editar**: escribe la nueva unidad (por ejemplo **lb**) y guarda; el sistema te pregunta si quieres convertir.
+- **Otras unidades que se convierten:** **g** (gramos), **oz** (onzas), **l** (litros), **ml** y **gal** (galones). Los **pesos** se convierten entre sí y los **líquidos** entre sí; **no** se puede pasar de kilos a litros, ni de "und" a kilos.
+> 💡 Si un insumo se mide en cajas, paquetes o unidades, cambiarle el nombre de la unidad **no** modifica las cantidades.
+> 💡 Los **productos del menú** ya se pueden vender por **UND, KG o LB** (cada uno con su precio); eso es independiente de la unidad del inventario.
 
 > 💡 El sistema **nunca bloquea una venta** por falta de stock; el insumo puede quedar en negativo y aparece en rojo para que lo corrijas.
 
@@ -702,6 +712,7 @@ Si el restaurante lo tiene activado, el cliente puede pagar con **Bitcoin o Ligh
 | **Factura** | El comprobante de lo cobrado. |
 | **Hijos (de un producto)** | Opciones de un plato (por ejemplo, el acompañante). |
 | **Insumo** | Un ingrediente o material (carne, arroz, bebidas). |
+| **kg / lb** | Kilo y libra, las dos unidades de peso. 1 kg = 2,2046 lb; 1 lb = 0,4536 kg. |
 | **Margen** | El porcentaje de ganancia de un plato. |
 | **Merma** | Producto que se pierde o se daña. |
 | **Navegador** | El programa para entrar a internet (Chrome, Safari, Edge). |

@@ -33,7 +33,7 @@ Para usarla desde otros equipos de la red local, abre el puerto 3000 en el firew
 | **Menú digital por QR** por mesa: carta con fotos y categorías, pedido desde el celular (el mesero lo confirma), llamar al mesero, pedir la cuenta, estado del pedido en vivo | `/mesas-qr` (imprimir QR) · el cliente abre `/menu/<token>` | Público / Mesero |
 | **Avisos en vivo** con sonido cuando una mesa pide, llama o solicita la cuenta | Mesas y Dashboard | Mesero / Admin |
 | **Reservas**: agenda por día, asignación de mesa, detección de choques, WhatsApp al cliente y formulario público | `/reservas` · público `/reservar` | Mesero / Admin |
-| **Inventario**: insumos, recetas por plato con costo y margen, descuento automático al facturar, alertas de stock bajo | `/inventario` | Admin |
+| **Inventario**: insumos, recetas por plato con costo y margen, descuento automático al facturar, **unidades kg ⇄ lb intercambiables con conversión automática** (stock, costo, recetas e historial), alertas de stock bajo | `/inventario` | Admin |
 | **Dashboard en vivo**: ventas de hoy vs. ayer, 7 días, más vendidos, mesas, cocina, reservas, stock | `/dashboard` (inicio del admin) | Admin |
 | **Cobro con criptomonedas** (Bitcoin y Lightning vía tu propio BTCPay Server): QR en pantalla, el cliente paga con su billetera; el pago se verifica en el servidor y no puede aplicarse dos veces. También en Delivery y en los asistentes IA | Mesas, Venta rápida y Delivery → "Cripto" · Configuración → Pagos con cripto | Mesero / Admin |
 | **Factura por WhatsApp** | Botón en la factura | Todos |

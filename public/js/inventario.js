@@ -7,6 +7,13 @@
   const money = (n) => `$${Number(n || 0).toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const modalInsumo = new bootstrap.Modal($('modalInsumo'));
   const modalReceta = new bootstrap.Modal($('modalReceta'));
+  // Unidades convertibles (igual que services/unidades.js): factor respecto a g (peso) o ml (volumen)
+  const UNI = { g: ['peso', 1], kg: ['peso', 1000], lb: ['peso', 453.59237], oz: ['peso', 28.349523125], ml: ['vol', 1], l: ['vol', 1000], gal: ['vol', 3785.411784] };
+  const ALIAS = { kilo: 'kg', kilos: 'kg', libra: 'lb', libras: 'lb', lbs: 'lb', gramo: 'g', gramos: 'g', onza: 'oz', onzas: 'oz', litro: 'l', litros: 'l', galon: 'gal', 'galón': 'gal' };
+  const normU = (u) => { const t = String(u || '').trim().toLowerCase(); return ALIAS[t] || t; };
+  const compat = (u) => { const i = UNI[normU(u)]; return i ? Object.keys(UNI).filter((k) => UNI[k][0] === i[0]) : []; };
+  const aUnidad = (cant, de, a) => { const o = UNI[normU(de)], d = UNI[normU(a)]; return o && d && o[0] === d[0] ? Number(cant) * o[1] / d[1] : Number(cant); };
+  const opcionesUnidad = (u, sel) => { const l = compat(u); return (l.length ? l : [normU(u)]).map((k) => `<option value="${k}" ${k === normU(sel || u) ? 'selected' : ''}>${esc(k)}</option>`).join(''); };
   let insumos = [];
   let costeo = [];
   let recetaProducto = null;
@@ -48,13 +55,14 @@
             ${Number(i.en_recetas) ? `<div class="small text-muted">En ${i.en_recetas} receta(s)</div>` : ''}</td>
         <td class="num">${num(i.stock, 3)} <span class="text-muted small">${esc(i.unidad)}</span></td>
         <td><div class="stockbar ${i.bajo ? 'bajo' : ''}"><span style="width:${pct}%"></span></div></td>
-        <td class="num">${num(min, 3)}</td>
-        <td class="num">${money(i.costo_unitario)}</td>
+        <td class="num">${num(min, 3)} <span class="text-muted small">${esc(i.unidad)}</span></td>
+        <td class="num">${money(i.costo_unitario)} <span class="text-muted small">/ ${esc(i.unidad)}</span></td>
         <td class="num">${num(i.consumo_7d, 3)}</td>
         <td class="text-end text-nowrap">
           <button class="btn btn-sm btn-success" data-mov="entrada" title="Entrada (compra)"><i class="bi bi-plus-lg"></i></button>
           <button class="btn btn-sm btn-outline-secondary" data-mov="salida" title="Salida (merma)"><i class="bi bi-dash-lg"></i></button>
           <button class="btn btn-sm btn-outline-secondary" data-mov="ajuste" title="Ajuste por conteo"><i class="bi bi-clipboard-check"></i></button>
+          ${['kg', 'lb'].includes(normU(i.unidad)) ? `<button class="btn btn-sm btn-outline-dark" data-conv title="Cambiar la unidad a ${normU(i.unidad) === 'kg' ? 'libras' : 'kilos'}: convierte stock, costo y recetas"><i class="bi bi-arrow-left-right"></i> ${normU(i.unidad) === 'kg' ? 'a lb' : 'a kg'}</button>` : ''}
           <button class="btn btn-sm btn-outline-primary" data-edit title="Editar"><i class="bi bi-pencil"></i></button>
           <button class="btn btn-sm btn-outline-danger" data-del title="Eliminar"><i class="bi bi-trash"></i></button>
         </td></tr>`;
@@ -113,6 +121,15 @@
   $('formInsumo').addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = $('iId').value;
+    const ant = id ? insumos.find((x) => String(x.id) === id) : null;
+    const nuevaU = normU($('iUnidad').value);
+    if (ant && normU(ant.unidad) !== nuevaU && compat(ant.unidad).includes(nuevaU)) {
+      const f = aUnidad(1, ant.unidad, nuevaU);
+      const ok = await Swal.fire({ icon: 'question', title: `¿Cambiar de ${normU(ant.unidad)} a ${nuevaU}?`,
+        html: `Todo se convertirá solo: 1 ${esc(normU(ant.unidad))} = ${num(f, 4)} ${esc(nuevaU)}.<br>El stock, el mínimo, el costo, las recetas y el historial pasarán a ${esc(nuevaU)}.`,
+        showCancelButton: true, confirmButtonText: 'Sí, convertir', cancelButtonText: 'Cancelar' });
+      if (!ok.isConfirmed) return;
+    }
     try {
       await api(id ? `/api/inventario/insumos/${id}` : '/api/inventario/insumos', {
         method: id ? 'PUT' : 'POST',
@@ -128,6 +145,16 @@
     if (!tr) return;
     const ins = insumos.find((x) => String(x.id) === tr.dataset.id);
     if (e.target.closest('[data-edit]')) return abrirInsumo(ins);
+    if (e.target.closest('[data-conv]')) {
+      const destino = normU(ins.unidad) === 'kg' ? 'lb' : 'kg';
+      const f = aUnidad(1, ins.unidad, destino);
+      const ok = await Swal.fire({ icon: 'question', title: `¿Pasar "${ins.nombre}" a ${destino === 'lb' ? 'libras' : 'kilos'}?`,
+        html: `1 ${esc(normU(ins.unidad))} = ${num(f, 4)} ${destino}.<br>Se convierten solos el stock (${num(ins.stock, 3)} → ${num(aUnidad(ins.stock, ins.unidad, destino), 3)} ${destino}), el mínimo, el costo y las recetas.`,
+        showCancelButton: true, confirmButtonText: 'Sí, convertir', cancelButtonText: 'Cancelar' });
+      if (!ok.isConfirmed) return;
+      try { await api(`/api/inventario/insumos/${ins.id}/convertir`, { method: 'POST', body: JSON.stringify({ unidad: destino }) }); cargar(); } catch (err) { Swal.fire({ icon: 'error', title: err.message }); }
+      return;
+    }
     if (e.target.closest('[data-del]')) {
       const ok = await Swal.fire({ icon: 'warning', title: `¿Eliminar "${ins.nombre}"?`, text: 'Se quitará de las recetas. El historial se conserva.', showCancelButton: true, confirmButtonText: 'Eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#b91c1c' });
       if (!ok.isConfirmed) return;
@@ -141,14 +168,18 @@
     const r = await Swal.fire({
       title: titulos[tipo],
       html: `<div class="text-start small mb-2">${esc(ins.nombre)} · stock actual <b>${num(ins.stock, 3)} ${esc(ins.unidad)}</b></div>
-             <input id="swCant" type="number" step="0.001" min="0" class="form-control mb-2" placeholder="${tipo === 'ajuste' ? 'Stock contado' : 'Cantidad'} (${esc(ins.unidad)})">
+             <div class="input-group mb-2">
+               <input id="swCant" type="number" step="0.001" min="0" class="form-control" placeholder="${tipo === 'ajuste' ? 'Stock contado' : 'Cantidad'}">
+               <select id="swUni" class="form-select" style="max-width:90px" aria-label="Unidad">${opcionesUnidad(ins.unidad)}</select>
+             </div>
+             ${compat(ins.unidad).length > 1 ? `<div class="small text-muted mb-2 text-start">Puedes escribirla en ${compat(ins.unidad).filter((k) => ['kg', 'lb'].includes(k)).join(' o ') || 'otra unidad'}: se convierte a ${esc(ins.unidad)} automáticamente.</div>` : ''}
              <input id="swNota" class="form-control" maxlength="300" placeholder="${tipo === 'entrada' ? 'Proveedor / factura de compra' : 'Motivo'} (opcional)">`,
       showCancelButton: true, confirmButtonText: 'Guardar', cancelButtonText: 'Cancelar', focusConfirm: false,
       didOpen: () => document.getElementById('swCant').focus(),
       preConfirm: () => {
         const cantidad = document.getElementById('swCant').value;
         if (cantidad === '' || Number(cantidad) < 0 || (tipo !== 'ajuste' && Number(cantidad) <= 0)) { Swal.showValidationMessage('Ingresa una cantidad válida'); return false; }
-        return { cantidad, nota: document.getElementById('swNota').value };
+        return { cantidad, unidad: document.getElementById('swUni').value, nota: document.getElementById('swNota').value };
       }
     });
     if (!r.isConfirmed) return;
@@ -164,7 +195,8 @@
     const div = document.createElement('div');
     div.className = 'd-flex gap-2 align-items-center r-fila';
     div.innerHTML = `<select class="form-select form-select-sm r-ins"><option value="">Insumo…</option>${opts}</select>
-      <input type="number" step="0.001" min="0" class="form-control form-control-sm r-cant" style="max-width:130px" placeholder="Cantidad" value="${item.cantidad != null ? Number(item.cantidad) : ''}">
+      <input type="number" step="0.00001" min="0" class="form-control form-control-sm r-cant" style="max-width:130px" placeholder="Cantidad" value="${item.cantidad != null ? Number(item.cantidad) : ''}">
+      <select class="form-select form-select-sm r-uni" style="max-width:80px" aria-label="Unidad">${item.insumo_id ? opcionesUnidad((insumos.find((i) => Number(i.id) === Number(item.insumo_id)) || {}).unidad) : ''}</select>
       <button class="btn btn-sm btn-outline-danger r-del" type="button" aria-label="Quitar"><i class="bi bi-x-lg"></i></button>`;
     return div;
   }
@@ -172,7 +204,7 @@
     let costo = 0;
     document.querySelectorAll('.r-fila').forEach((f) => {
       const ins = insumos.find((i) => String(i.id) === f.querySelector('.r-ins').value);
-      if (ins) costo += Number(f.querySelector('.r-cant').value || 0) * Number(ins.costo_unitario);
+      if (ins) costo += aUnidad(f.querySelector('.r-cant').value || 0, f.querySelector('.r-uni').value || ins.unidad, ins.unidad) * Number(ins.costo_unitario);
     });
     const precio = Number(recetaProducto?.precio_unidad || 0);
     $('recetaCosto').textContent = money(costo);
@@ -197,9 +229,16 @@
   $('recetaAgregar').addEventListener('click', () => { $('recetaFilas').appendChild(filaReceta()); });
   $('recetaFilas').addEventListener('click', (e) => { if (e.target.closest('.r-del')) { e.target.closest('.r-fila').remove(); recalcReceta(); } });
   $('recetaFilas').addEventListener('input', recalcReceta);
-  $('recetaFilas').addEventListener('change', recalcReceta);
+  // Al elegir otro insumo, el selector de unidad ofrece las unidades compatibles con él
+  $('recetaFilas').addEventListener('change', (e) => {
+    if (e.target.classList.contains('r-ins')) {
+      const ins = insumos.find((i) => String(i.id) === e.target.value);
+      e.target.closest('.r-fila').querySelector('.r-uni').innerHTML = ins ? opcionesUnidad(ins.unidad) : '';
+    }
+    recalcReceta();
+  });
   $('recetaGuardar').addEventListener('click', async () => {
-    const items = [...document.querySelectorAll('.r-fila')].map((f) => ({ insumo_id: f.querySelector('.r-ins').value, cantidad: f.querySelector('.r-cant').value }))
+    const items = [...document.querySelectorAll('.r-fila')].map((f) => ({ insumo_id: f.querySelector('.r-ins').value, cantidad: f.querySelector('.r-cant').value, unidad: f.querySelector('.r-uni').value }))
       .filter((x) => x.insumo_id && Number(x.cantidad) > 0);
     try {
       await api(`/api/inventario/recetas/${recetaProducto.id}`, { method: 'PUT', body: JSON.stringify({ items }) });

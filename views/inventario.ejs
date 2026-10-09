@@ -42,7 +42,7 @@
                     </div>
                     <div class="table-responsive">
                         <table class="table rm-table">
-                            <thead><tr><th>Insumo</th><th class="text-end">Stock</th><th></th><th class="text-end">Mínimo</th><th class="text-end">Costo/unidad</th><th class="text-end">Consumo 7 días</th><th class="text-end">Acciones</th></tr></thead>
+                            <thead><tr><th>Insumo</th><th class="text-end">Stock</th><th></th><th class="text-end">Mínimo</th><th class="text-end">Costo por unidad</th><th class="text-end">Consumo 7 días</th><th class="text-end">Acciones</th></tr></thead>
                             <tbody id="tbInsumos"></tbody>
                         </table>
                     </div>
@@ -85,8 +85,9 @@
                         <div class="col-8"><label class="form-label small" for="iNombre">Nombre</label><input id="iNombre" class="form-control" required maxlength="100" placeholder="Ej: Carne de res, Arroz, Coca-Cola 350ml"></div>
                         <div class="col-4"><label class="form-label small" for="iUnidad">Unidad</label>
                             <input id="iUnidad" class="form-control" list="unidades" value="und" maxlength="20">
-                            <datalist id="unidades"><option value="und"><option value="kg"><option value="g"><option value="lb"><option value="l"><option value="ml"><option value="porción"></datalist>
+                            <datalist id="unidades"><option value="und"><option value="kg"><option value="lb"><option value="g"><option value="oz"><option value="l"><option value="ml"><option value="gal"><option value="porción"></datalist>
                         </div>
+                        <div class="col-12 small text-muted" id="iAyudaUnidad"><i class="bi bi-arrows-expand-vertical"></i> Puedes usar <b>kg</b> o <b>lb</b> (libras). Si cambias la unidad de un insumo ya creado (por ejemplo de kg a lb), el stock, el mínimo, el costo y las recetas se <b>convierten solos</b>.</div>
                         <div class="col-4" id="wrapStock"><label class="form-label small" for="iStock">Stock inicial</label><input id="iStock" type="number" step="0.001" min="0" value="0" class="form-control"></div>
                         <div class="col-4"><label class="form-label small" for="iMin">Stock mínimo</label><input id="iMin" type="number" step="0.001" min="0" value="0" class="form-control"></div>
                         <div class="col-4"><label class="form-label small" for="iCosto">Costo por unidad</label><input id="iCosto" type="number" step="0.01" min="0" value="0" class="form-control"></div>

@@ -4,6 +4,7 @@
 const express = require('express');
 const db = require('../db');
 const inventario = require('../services/inventario');
+const unidades = require('../services/unidades');
 
 const router = express.Router();
 
@@ -17,7 +18,7 @@ function fail(res, e, msg) {
 function leerInsumo(b) {
     const i = {
         nombre: String(b.nombre || '').trim().slice(0, 100),
-        unidad: String(b.unidad || 'und').trim().slice(0, 20) || 'und',
+        unidad: unidades.normalizar(String(b.unidad || 'und').trim().slice(0, 20) || 'und'),
         stock_minimo: Number(b.stock_minimo || 0),
         costo_unitario: Number(b.costo_unitario || 0)
     };
@@ -74,14 +75,32 @@ router.post('/api/inventario/insumos', async (req, res) => {
 router.put('/api/inventario/insumos/:id(\\d+)', async (req, res) => {
     const { i, error } = leerInsumo(req.body || {});
     if (error) return res.status(400).json({ error });
+    let c;
     try {
-        const [u] = await db.query(
-            'UPDATE insumos SET nombre = ?, unidad = ?, stock_minimo = ?, costo_unitario = ? WHERE id = ? AND activo = 1',
-            [i.nombre, i.unidad, i.stock_minimo, i.costo_unitario, req.params.id]
-        );
-        if (!u.affectedRows) return res.status(404).json({ error: 'Insumo no encontrado' });
-        res.json({ ok: true });
-    } catch (e) { fail(res, e, 'Error al editar insumo'); }
+        c = await db.getConnection();
+        await c.beginTransaction();
+        const [ant] = await c.query('SELECT unidad FROM insumos WHERE id = ? AND activo = 1 FOR UPDATE', [req.params.id]);
+        if (!ant[0]) { await c.rollback(); return res.status(404).json({ error: 'Insumo no encontrado' }); }
+        let convertido = false;
+        if (unidades.normalizar(ant[0].unidad) !== i.unidad) {
+            if (unidades.multiplicador(ant[0].unidad, i.unidad) !== null) {
+                // kg <-> lb, etc.: el mínimo y el costo del formulario vienen en la unidad anterior; se guardan
+                // y luego se convierten junto con el stock, las recetas y el historial.
+                await c.query('UPDATE insumos SET nombre = ?, stock_minimo = ?, costo_unitario = ? WHERE id = ?', [i.nombre, i.stock_minimo, i.costo_unitario, req.params.id]);
+                await inventario.cambiarUnidad(c, Number(req.params.id), i.unidad);
+                convertido = true;
+            } else {
+                await c.query('UPDATE insumos SET nombre = ?, unidad = ?, stock_minimo = ?, costo_unitario = ? WHERE id = ?', [i.nombre, i.unidad, i.stock_minimo, i.costo_unitario, req.params.id]);
+            }
+        } else {
+            await c.query('UPDATE insumos SET nombre = ?, stock_minimo = ?, costo_unitario = ? WHERE id = ?', [i.nombre, i.stock_minimo, i.costo_unitario, req.params.id]);
+        }
+        await c.commit();
+        res.json({ ok: true, convertido });
+    } catch (e) {
+        if (c) await c.rollback().catch(() => {});
+        fail(res, e, 'Error al editar insumo');
+    } finally { if (c) c.release(); }
 });
 
 // Se desactiva (no se borra) para conservar el historial de movimientos
@@ -93,6 +112,21 @@ router.delete('/api/inventario/insumos/:id(\\d+)', async (req, res) => {
     } catch (e) { fail(res, e, 'Error al eliminar insumo'); }
 });
 
+// Cambio rápido de unidad (kg <-> lb): convierte stock, mínimo, costo, recetas e historial
+router.post('/api/inventario/insumos/:id(\\d+)/convertir', async (req, res) => {
+    let c;
+    try {
+        c = await db.getConnection();
+        await c.beginTransaction();
+        const r = await inventario.cambiarUnidad(c, Number(req.params.id), req.body?.unidad);
+        await c.commit();
+        res.json(r);
+    } catch (e) {
+        if (c) await c.rollback().catch(() => {});
+        fail(res, e, 'Error al cambiar la unidad');
+    } finally { if (c) c.release(); }
+});
+
 router.post('/api/inventario/insumos/:id(\\d+)/movimiento', async (req, res) => {
     let c;
     try {
@@ -102,6 +136,7 @@ router.post('/api/inventario/insumos/:id(\\d+)/movimiento', async (req, res) => 
             insumoId: Number(req.params.id),
             tipo: String(req.body?.tipo || ''),
             cantidad: req.body?.cantidad,
+            unidad: req.body?.unidad,
             nota: String(req.body?.nota || '').trim().slice(0, 300) || null,
             usuario: req.session?.user?.usuario || null
         });
@@ -165,13 +200,21 @@ router.get('/api/inventario/recetas/:productoId(\\d+)', async (req, res) => {
 // Reemplaza la receta completa del producto
 router.put('/api/inventario/recetas/:productoId(\\d+)', async (req, res) => {
     const items = (Array.isArray(req.body?.items) ? req.body.items : [])
-        .map((x) => ({ insumo_id: Number(x.insumo_id), cantidad: Number(x.cantidad) }))
+        .map((x) => ({ insumo_id: Number(x.insumo_id), cantidad: Number(x.cantidad), unidad: x.unidad }))
         .filter((x) => Number.isInteger(x.insumo_id) && x.insumo_id > 0 && Number.isFinite(x.cantidad) && x.cantidad > 0);
     const unicos = new Map(items.map((x) => [x.insumo_id, x]));
     let c;
     try {
         c = await db.getConnection();
         await c.beginTransaction();
+        // Cada línea puede escribirse en otra unidad compatible (ej. 2 lb de un insumo en kg): se guarda en la unidad del insumo
+        if (unicos.size) {
+            const [uni] = await c.query('SELECT id, unidad FROM insumos WHERE id IN (?)', [[...unicos.keys()]]);
+            for (const x of unicos.values()) {
+                const ins = uni.find((u) => u.id === x.insumo_id);
+                if (ins) x.cantidad = Math.max(inventario.convertirCantidad(x.cantidad, x.unidad, ins.unidad), 0.00001);
+            }
+        }
         await c.query('DELETE FROM recetas WHERE producto_id = ?', [req.params.productoId]);
         if (unicos.size) {
             await c.query(

@@ -294,6 +294,17 @@ CREATE TABLE IF NOT EXISTS inventario_movimientos (
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Más decimales para poder convertir kg <-> lb sin perder precisión (solo se amplía si hace falta)
+DO $$
+BEGIN
+    IF (SELECT numeric_scale FROM information_schema.columns WHERE table_name = 'recetas' AND column_name = 'cantidad') < 5 THEN
+        ALTER TABLE recetas ALTER COLUMN cantidad TYPE NUMERIC(14,5);
+    END IF;
+    IF (SELECT numeric_scale FROM information_schema.columns WHERE table_name = 'insumos' AND column_name = 'costo_unitario') < 4 THEN
+        ALTER TABLE insumos ALTER COLUMN costo_unitario TYPE NUMERIC(14,4);
+    END IF;
+END $$;
+
 -- ============================================================
 -- DATOS DEL NEGOCIO PARA LOS AGENTES + DELIVERY
 -- Relacionado con: routes/agentes.js (Configuración → Agentes), routes/delivery.js,
