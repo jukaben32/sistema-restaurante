@@ -98,6 +98,7 @@ accion('repartidor', (req) => enTransaccion((c) => delivery.asignarRepartidor(c,
 accion('en-camino', (req) => enTransaccion((c) => delivery.marcarEnCamino(c, Number(req.params.id))).then(() => ({})), 'Error al marcar en camino', (id) => avisos.pedido(id, 'en_camino'));
 accion('validar-pago', (req) => enTransaccion((c) => delivery.validarTransferencia(c, Number(req.params.id))).then(() => ({})), 'Error al validar el pago');
 accion('cobro-stripe', (req) => delivery.cobroStripe(Number(req.params.id), { baseUrl: baseUrl(req), usuario: usuario(req) }), 'Error al generar el enlace de pago');
+accion('cobro-cripto', (req) => delivery.cobroCripto(Number(req.params.id), { usuario: usuario(req) }), 'Error al generar el cobro cripto');
 accion('entregar', (req) => enTransaccion((c) => delivery.entregarYFacturar(c, Number(req.params.id), { pagos: req.body?.pagos, usuario: req.session?.user?.usuario || null })), 'Error al entregar y facturar', (id) => avisos.pedido(id, 'entregado'));
 
 module.exports = router;

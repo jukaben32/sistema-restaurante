@@ -35,6 +35,7 @@ Para usarla desde otros equipos de la red local, abre el puerto 3000 en el firew
 | **Reservas**: agenda por día, asignación de mesa, detección de choques, WhatsApp al cliente y formulario público | `/reservas` · público `/reservar` | Mesero / Admin |
 | **Inventario**: insumos, recetas por plato con costo y margen, descuento automático al facturar, alertas de stock bajo | `/inventario` | Admin |
 | **Dashboard en vivo**: ventas de hoy vs. ayer, 7 días, más vendidos, mesas, cocina, reservas, stock | `/dashboard` (inicio del admin) | Admin |
+| **Cobro con criptomonedas** (Bitcoin y Lightning vía tu propio BTCPay Server): QR en pantalla, el cliente paga con su billetera; el pago se verifica en el servidor y no puede aplicarse dos veces. También en Delivery y en los asistentes IA | Mesas, Venta rápida y Delivery → "Cripto" · Configuración → Pagos con cripto | Mesero / Admin |
 | **Factura por WhatsApp** | Botón en la factura | Todos |
 | **Guía de uso integrada** para quien nunca usó el sistema (por rol, con buscador, imprimible y descargable). El texto está en [ayuda/GUIA-DE-USO.md](ayuda/GUIA-DE-USO.md): se edita con cualquier editor y se actualiza sola en la app | Menú → **Ayuda** (`/ayuda`) | Todos |
 | **Optimizada para Android e iPhone**: menú con botón ☰, zonas seguras del notch, sin zoom molesto en campos, botones táctiles | Todas las pantallas | Todos |
@@ -56,6 +57,13 @@ Los pedidos y reservas que toman los asistentes entran **por confirmar**: el per
 2. En la app: Configuración → **Pagos con Stripe**, pega la llave, elige la moneda, activa el interruptor y pulsa **Probar conexión**.
 3. Para que los clientes vuelvan a una página de confirmación, abre la app con la IP de la PC en la red (ej. `http://192.168.1.20:3000`) o define la URL pública.
 4. Webhook (opcional, si publicas la app en internet): endpoint `https://TU_DOMINIO/stripe/webhook` con los eventos `checkout.session.completed`, `checkout.session.async_payment_succeeded` y `checkout.session.expired`.
+
+### Configurar pagos con cripto (BTCPay Server)
+1. Ten un [BTCPay Server](https://btcpayserver.org) (gratis, de código abierto): un hosting de BTCPay o instalado en tu servidor. Crea una tienda, conecta tu billetera y activa Lightning.
+2. En BTCPay crea una API key limitada a tu tienda con los permisos `btcpay.store.canviewinvoices`, `btcpay.store.cancreateinvoice`, `btcpay.store.canmodifyinvoices` y `btcpay.store.canviewstoresettings`.
+3. En la app: Configuración → **Pagos con cripto**: URL de BTCPay, Store ID y API key; activa el interruptor y pulsa **Probar conexión**. La API key se guarda cifrada.
+4. No hace falta webhook: la app consulta a BTCPay directamente (también en Vercel). Los reembolsos se hacen a mano desde BTCPay.
+5. En República Dominicana las criptomonedas no son moneda de curso legal (el Banco Central no obliga a aceptarlas); su uso por un comercio privado es voluntario y las ganancias se declaran a la DGII. Consulta con tu contador.
 
 ## Seguridad
 - `.env` **no** se sube a Git (contiene la contraseña de la base de datos).

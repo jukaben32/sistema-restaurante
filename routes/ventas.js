@@ -62,11 +62,11 @@ async function getTotalesPorMetodo(queryParams) {
             LEFT JOIN factura_pagos fp2 ON fp2.factura_id = f.id
             ${whereSqlFallback}
         ) t
-        WHERE t.metodo IN ('efectivo','transferencia','tarjeta','qr')
+        WHERE t.metodo IN ('efectivo','transferencia','tarjeta','qr','cripto')
         GROUP BY t.metodo
     `;
 
-    const totales = { efectivo: 0, transferencia: 0, tarjeta: 0, qr: 0, general: 0 };
+    const totales = { efectivo: 0, transferencia: 0, tarjeta: 0, qr: 0, cripto: 0, general: 0 };
 
     try {
         const [rows] = await db.query(sql, unionParams);
@@ -77,6 +77,7 @@ async function getTotalesPorMetodo(queryParams) {
             if (metodo === 'transferencia') totales.transferencia = val;
             if (metodo === 'tarjeta') totales.tarjeta = val;
             if (metodo === 'qr') totales.qr = val;
+            if (metodo === 'cripto') totales.cripto = val;
         });
     } catch (err) {
         // Si no existe factura_pagos (instalación vieja), no rompemos: fallback a forma_pago
@@ -96,6 +97,7 @@ async function getTotalesPorMetodo(queryParams) {
                 if (metodo === 'transferencia') totales.transferencia = val;
                 if (metodo === 'tarjeta') totales.tarjeta = val;
                 if (metodo === 'qr') totales.qr = val;
+                if (metodo === 'cripto') totales.cripto = val;
             });
         } catch (_) {
             // si todo falla, dejamos en 0
@@ -103,7 +105,7 @@ async function getTotalesPorMetodo(queryParams) {
         console.error('Error calculando totales por método:', err);
     }
 
-    totales.general = Number(totales.efectivo) + Number(totales.transferencia) + Number(totales.tarjeta) + Number(totales.qr);
+    totales.general = Number(totales.efectivo) + Number(totales.transferencia) + Number(totales.tarjeta) + Number(totales.qr) + Number(totales.cripto);
     return totales;
 }
 
@@ -227,7 +229,7 @@ router.get('/', async (req, res) => {
 
 // ─── helpers de formato para el Excel ────────────────────────────────────────
 function fmtMetodo(m) {
-    const map = { efectivo: 'Efectivo', transferencia: 'Transferencia', tarjeta: 'Tarjeta', qr: 'QR', mixto: 'Mixto' };
+    const map = { efectivo: 'Efectivo', transferencia: 'Transferencia', tarjeta: 'Tarjeta', qr: 'QR', cripto: 'Cripto', mixto: 'Mixto' };
     return map[String(m || '').toLowerCase()] || (String(m || '').charAt(0).toUpperCase() + String(m || '').slice(1));
 }
 
@@ -329,14 +331,14 @@ router.get('/export', async (req, res) => {
         ]);
 
         // Contar transacciones por método
-        let transaccionesPorMetodo = { efectivo: 0, transferencia: 0, tarjeta: 0, qr: 0 };
+        let transaccionesPorMetodo = { efectivo: 0, transferencia: 0, tarjeta: 0, qr: 0, cripto: 0 };
         try {
             const sqlTx = `
                 SELECT fp.metodo, COUNT(DISTINCT fp.factura_id) AS num
                 FROM factura_pagos fp
                 JOIN facturas f ON f.id = fp.factura_id
                 JOIN clientes c ON f.cliente_id = c.id
-                ${whereSql ? whereSql + ' AND' : 'WHERE'} fp.metodo IN ('efectivo','transferencia','tarjeta','qr')
+                ${whereSql ? whereSql + ' AND' : 'WHERE'} fp.metodo IN ('efectivo','transferencia','tarjeta','qr','cripto')
                 GROUP BY fp.metodo
             `;
             const [txRows] = await db.query(sqlTx, params);
@@ -428,6 +430,7 @@ router.get('/export', async (req, res) => {
             ['Transferencia',  totales.transferencia,  transaccionesPorMetodo.transferencia],
             ['Tarjeta',        totales.tarjeta,        transaccionesPorMetodo.tarjeta],
             ['QR',             totales.qr,             transaccionesPorMetodo.qr],
+            ['Cripto',         totales.cripto,         transaccionesPorMetodo.cripto],
         ];
         metodosResumen.forEach(([nombre, monto, txCount], idx) => {
             const pct = totalGeneral > 0 ? Number(monto || 0) / totalGeneral : 0;
@@ -569,6 +572,7 @@ router.get('/export', async (req, res) => {
             { nombre: 'Transferencia', monto: totales.transferencia,  tx: transaccionesPorMetodo.transferencia,  color: 'FF1E88E5' },
             { nombre: 'Tarjeta',       monto: totales.tarjeta,        tx: transaccionesPorMetodo.tarjeta,        color: 'FFFF6F00' },
             { nombre: 'QR',            monto: totales.qr,             tx: transaccionesPorMetodo.qr,             color: 'FF8E24AA' },
+            { nombre: 'Cripto',        monto: totales.cripto,         tx: transaccionesPorMetodo.cripto,         color: 'FFF7931A' },
         ];
         const sumMetodos = metodosDetalle.reduce((a, m) => a + Number(m.monto || 0), 0) || 1;
 

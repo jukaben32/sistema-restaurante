@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('partials/head') %>
+    <title>Pagos con cripto · Restaurant Martin</title>
+</head>
+<body class="rm">
+    <%- include('partials/navbar') %>
+
+    <main class="rm-page container pb-5" style="max-width: 920px;">
+        <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+            <div>
+                <h1 class="rm-title h3"><i class="bi bi-currency-bitcoin me-2" style="color:#f7931a"></i>Pagos con cripto</h1>
+                <p class="rm-sub">El cliente escanea un QR con su billetera y paga con Bitcoin (o Lightning, instantáneo). Funciona con tu propio BTCPay Server: sin intermediarios ni comisiones, el dinero llega directo a tu billetera.</p>
+            </div>
+            <a href="/configuracion" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Configuración</a>
+        </div>
+
+        <div class="mb-3">
+            <% if (cfg.habilitado) { %>
+                <div class="alert alert-success d-flex align-items-center gap-2 mb-0">
+                    <i class="bi bi-check-circle-fill"></i>
+                    <div>Activo — ya puedes cobrar con cripto desde Mesas, Venta rápida y Delivery.</div>
+                </div>
+            <% } else { %>
+                <div class="alert alert-warning d-flex align-items-center gap-2 mb-0">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <div>No activo — conecta tu BTCPay Server y activa el interruptor.</div>
+                </div>
+            <% } %>
+        </div>
+
+        <form id="formCripto" class="rm-card" autocomplete="off">
+            <div class="rm-card-h"><i class="bi bi-key"></i><h2>Tu BTCPay Server</h2></div>
+            <div class="rm-card-b">
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" role="switch" id="habilitado" <%= cfg.habilitado ? 'checked' : '' %>>
+                    <label class="form-check-label fw-semibold" for="habilitado">Aceptar pagos con cripto</label>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold" for="url">Dirección de tu BTCPay</label>
+                    <input id="url" class="form-control font-monospace" placeholder="https://btcpay.restaurantmartin.com" value="<%= cfg.url %>">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold" for="storeId">Store ID (identificador de la tienda)</label>
+                    <input id="storeId" class="form-control font-monospace" placeholder="Ej: 9fXk3…" value="<%= cfg.storeId %>">
+                    <div class="form-text">En BTCPay: Settings → General → Store ID.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold" for="apiKey">API key</label>
+                    <div class="input-group">
+                        <input id="apiKey" type="password" class="form-control font-monospace"
+                               placeholder="<%= cfg.tieneApiKey ? ('Guardada: ' + cfg.apiKeyMascara + ' — deja vacío para conservarla') : 'Pega aquí la API key' %>">
+                        <button class="btn btn-outline-secondary" type="button" id="toggleKey" aria-label="Mostrar u ocultar"><i class="bi bi-eye"></i></button>
+                    </div>
+                    <div class="form-text">Se guarda cifrada (AES-256) y solo se usa desde el servidor.</div>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-sm-5">
+                        <label class="form-label small fw-semibold" for="monedaCripto">Moneda del cobro en BTCPay</label>
+                        <select id="monedaCripto" class="form-select">
+                            <% [[cfg.monedaNegocio, String(cfg.monedaNegocio).toUpperCase() + ' — Moneda de tus precios'],['usd','USD — Dólar']].filter((m, i, arr) => arr.findIndex((x) => x[0] === m[0]) === i).forEach(([v,l]) => { %>
+                                <option value="<%= v %>" <%= v === cfg.monedaCripto ? 'selected' : '' %>><%= l %></option>
+                            <% }); %>
+                        </select>
+                        <div class="form-text">Usa la moneda de tus precios si tu BTCPay tiene tasa de cambio para ella (en RD, el peso dominicano, lo normal). Si no, elige USD.</div>
+                    </div>
+                    <div class="col-sm-7" id="boxTasa">
+                        <label class="form-label small fw-semibold" for="tasa">Tasa de cambio (solo si elegiste USD)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">1 USD =</span>
+                            <input id="tasa" type="number" step="0.01" min="0" class="form-control" placeholder="60.00" value="<%= cfg.tasa %>">
+                            <span class="input-group-text"><%= String(cfg.monedaNegocio).toUpperCase() %></span>
+                        </div>
+                        <div class="form-text">Los precios del restaurante están en <%= String(cfg.monedaNegocio).toUpperCase() %>. Actualiza esta tasa cuando cambie.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rm-card-b border-top d-flex flex-wrap gap-2 align-items-center">
+                <button type="submit" class="btn btn-rm" id="btnGuardar"><i class="bi bi-save"></i> Guardar</button>
+                <button type="button" class="btn btn-outline-secondary" id="btnProbar"><i class="bi bi-plug"></i> Probar conexión</button>
+            </div>
+        </form>
+
+        <div class="rm-card mt-3">
+            <div class="rm-card-h"><i class="bi bi-list-check"></i><h2>Cómo conectarlo (paso a paso)</h2></div>
+            <div class="rm-card-b small">
+                <ol class="mb-2">
+                    <li>Ten un <strong>BTCPay Server</strong> (gratis y de código abierto). Lo más fácil: un hosting de BTCPay ya listo; también puedes instalarlo en tu servidor.</li>
+                    <li>En BTCPay crea una <strong>tienda</strong>, conecta <strong>tu billetera</strong> (así el dinero llega directo a ti) y activa <strong>Lightning</strong> para pagos instantáneos.</li>
+                    <li>Crea una <strong>API key</strong>: tu usuario → <em>Manage Account → API Keys → Generate Key</em>. Marca solo estos permisos y limítala a tu tienda:
+                        <code>View invoices</code>, <code>Create invoice</code>, <code>Modify invoices</code> y <code>View your stores</code>.</li>
+                    <li>Pega aquí la dirección, el Store ID y la API key; pulsa <strong>Probar conexión</strong> y luego <strong>Guardar</strong>.</li>
+                </ol>
+                <div class="alert alert-info py-2 mb-2"><i class="bi bi-lightning-charge me-1"></i>Consejo: en BTCPay pon la política de velocidad en <em>High speed</em> para que los pagos pequeños en Bitcoin no hagan esperar al cliente.</div>
+                <div class="alert alert-secondary py-2 mb-0"><i class="bi bi-info-circle me-1"></i>En República Dominicana las criptomonedas no son moneda de curso legal: nadie está obligado a aceptarlas y su uso es voluntario. Las ganancias al vender cripto se declaran a la DGII; consulta con tu contador.</div>
+            </div>
+        </div>
+    </main>
+
+    <%- include('partials/footer') %>
+
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
+    <script>
+    (function () {
+        const $ = (id) => document.getElementById(id);
+        const MONEDA_NEGOCIO = '<%= cfg.monedaNegocio %>';
+        const actualizarTasa = () => { $('boxTasa').style.display = $('monedaCripto').value === MONEDA_NEGOCIO ? 'none' : ''; };
+        $('monedaCripto').addEventListener('change', actualizarTasa); actualizarTasa();
+        $('toggleKey').addEventListener('click', () => { const i = $('apiKey'); i.type = i.type === 'password' ? 'text' : 'password'; });
+        const esc = (s) => String(s || '').replace(/[<>&]/g, '');
+        $('formCripto').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = $('btnGuardar'); btn.disabled = true;
+            try {
+                const resp = await fetch('/configuracion/cripto', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                    body: JSON.stringify({
+                        habilitado: $('habilitado').checked ? '1' : '0',
+                        url: $('url').value, storeId: $('storeId').value, apiKey: $('apiKey').value,
+                        monedaCripto: $('monedaCripto').value, tasa: $('tasa').value
+                    })
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok) throw new Error(data.error || 'No se pudo guardar');
+                await Swal.fire({ icon: 'success', title: 'Configuración guardada',
+                    text: data.habilitado ? 'Los pagos con cripto están activos.' : 'Quedó desactivado (activa el interruptor y completa URL, Store ID y API key).' });
+                location.reload();
+            } catch (err) { Swal.fire({ icon: 'error', title: err.message }); }
+            finally { btn.disabled = false; }
+        });
+        $('btnProbar').addEventListener('click', async () => {
+            const btn = $('btnProbar'); btn.disabled = true;
+            try {
+                const resp = await fetch('/configuracion/cripto/probar', { method: 'POST', headers: { Accept: 'application/json' } });
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok) throw new Error(data.error || 'No se pudo conectar');
+                Swal.fire({ icon: data.tasaOk ? 'success' : 'warning', title: data.tasaOk ? 'Conexión correcta' : 'Conectado, pero revisa esto',
+                    html: 'Tienda: <b>' + esc(data.tienda) + '</b><br>' + (data.tasaOk ? 'Se pudo crear un cobro de prueba.' : esc(data.aviso)) });
+            } catch (err) { Swal.fire({ icon: 'error', title: err.message, text: 'Guarda los datos antes de probar.' }); }
+            finally { btn.disabled = false; }
+        });
+    })();
+    </script>
+</body>
+</html>

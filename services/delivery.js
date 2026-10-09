@@ -8,13 +8,14 @@
 const QRCode = require('qrcode');
 const db = require('../db');
 const stripeService = require('./stripe');
+const criptoService = require('./cripto');
 const facturacion = require('./facturacion');
 const clientesService = require('./clientes');
 const { normalizar } = require('./telefono');
 const { ErrorPublico } = require('./errores');
 
 const TIPOS = ['delivery', 'para_llevar'];
-const METODOS = ['stripe', 'transferencia', 'efectivo'];
+const METODOS = ['stripe', 'transferencia', 'efectivo', 'cripto'];
 const ORIGENES = ['pos', 'voz', 'whatsapp'];
 
 function codigoPedido(id, tipo) {
@@ -200,6 +201,17 @@ async function sincronizarCobrosPendientes(pedidos) {
             if (nuevo && nuevo.estado) p.stripe_estado = nuevo.estado;
         } catch (_) { /* Stripe sin configurar o sin red: el tablero sigue funcionando */ }
     }
+    // Cobros cripto (BTCPay): misma idea
+    for (const p of pedidos) {
+        if (!['pendiente', 'procesando'].includes(p.cripto_estado) || !p.cripto_id) continue;
+        const clave = `c${p.cripto_id}`;
+        if (ahora - (ultimaConsulta.get(clave) || 0) < 8000) continue;
+        ultimaConsulta.set(clave, ahora);
+        try {
+            const nuevo = await criptoService.consultarCobro(p.cripto_id);
+            if (nuevo && nuevo.estado) p.cripto_estado = nuevo.estado;
+        } catch (_) { /* BTCPay sin configurar o sin red */ }
+    }
 }
 
 /** Tablero: pedidos activos y los entregados/cancelados de hoy, con sus platos. */
@@ -210,12 +222,14 @@ async function listar(conn = db) {
                 p.pago_validado, p.repartidor, p.notas, p.created_at, p.entregado_at, p.factura_id,
                 (SELECT z.nombre FROM delivery_zonas z WHERE z.id = p.zona_id) AS zona,
                 sp.id AS stripe_id, sp.estado AS stripe_estado, sp.url AS stripe_url,
+                cp.id AS cripto_id, cp.estado AS cripto_estado,
                 (SELECT COUNT(*) FROM pedido_items i JOIN productos pr ON pr.id = i.producto_id AND pr.codigo <> 'ENVIO'
                   WHERE i.pedido_id = p.id AND i.estado NOT IN ('cancelado','rechazado')) AS lineas,
                 (SELECT COUNT(*) FROM pedido_items i JOIN productos pr ON pr.id = i.producto_id AND pr.codigo <> 'ENVIO'
                   WHERE i.pedido_id = p.id AND i.estado IN ('listo','servido')) AS listas
          FROM pedidos p
          LEFT JOIN stripe_pagos sp ON sp.id = p.stripe_pago_id
+         LEFT JOIN cripto_pagos cp ON cp.id = p.cripto_pago_id
          WHERE p.tipo IN ('delivery','para_llevar')
            AND (p.estado_delivery IN ('por_confirmar','en_cocina','en_camino') OR p.created_at >= CURRENT_DATE)
          ORDER BY p.created_at DESC
@@ -298,6 +312,11 @@ async function cancelar(conn, id, motivo, usuario) {
             await stripeService.cancelarCobro(p.stripe_pago_id).catch(() => {});
         }
     }
+    if (p.cripto_pago_id) {
+        const [cp] = await conn.query('SELECT estado FROM cripto_pagos WHERE id = ?', [p.cripto_pago_id]);
+        if (cp[0] && ['pagado', 'usado'].includes(cp[0].estado)) reembolsoPendiente = true; // el reembolso se hace a mano desde BTCPay
+        if (cp[0] && cp[0].estado === 'pendiente') await criptoService.cancelarCobro(p.cripto_pago_id).catch(() => {});
+    }
     return { reembolso_pendiente: reembolsoPendiente };
 }
 
@@ -354,6 +373,26 @@ async function cobroStripe(id, { baseUrl, usuario }) {
     return { estado: 'pendiente', url: cobro.url, qr: cobro.qr, monto: cobro.monto, moneda: cobro.moneda };
 }
 
+/** Genera (o reutiliza) el cobro cripto del pedido. Devuelve el enlace de pago, el QR y los datos de Lightning/Bitcoin. */
+async function cobroCripto(id, { usuario }) {
+    const [rows] = await db.query(
+        `SELECT p.*, cp.estado AS cp_estado, cp.checkout_url AS cp_url, cp.lightning AS cp_ln, cp.onchain AS cp_oc, cp.monto_btc AS cp_btc
+         FROM pedidos p LEFT JOIN cripto_pagos cp ON cp.id = p.cripto_pago_id
+         WHERE p.id = ? AND p.tipo IN ('delivery','para_llevar')`,
+        [id]
+    );
+    const p = rows[0];
+    if (!p) throw new ErrorPublico('Pedido no encontrado');
+    if (['entregado', 'cancelado'].includes(p.estado_delivery)) throw new ErrorPublico('Este pedido ya está cerrado');
+    if (p.cp_estado === 'pagado' || p.cp_estado === 'usado') return { estado: 'pagado' };
+    if (['pendiente', 'procesando'].includes(p.cp_estado) && p.cp_url) {
+        return { estado: p.cp_estado, url: p.cp_url, qr: await criptoService.qrDe(p.cp_url), monto: Number(p.total), lightning: p.cp_ln, onchain: p.cp_oc, monto_btc: p.cp_btc };
+    }
+    const cobro = await criptoService.crearCobro({ monto: Number(p.total), pedidoId: id, descripcion: `Pedido ${codigoPedido(id, p.tipo)}`, usuario, expiraMin: 180 });
+    await db.query(`UPDATE pedidos SET cripto_pago_id = ?, metodo_pago_previsto = 'cripto' WHERE id = ?`, [cobro.id, id]);
+    return { estado: 'pendiente', url: cobro.url, qr: cobro.qr_checkout, monto: cobro.monto, moneda: cobro.moneda, lightning: cobro.lightning, onchain: cobro.onchain, monto_btc: cobro.monto_btc };
+}
+
 /** Entrega y factura: usa el medio de pago previsto o los pagos indicados por el personal. */
 async function entregarYFacturar(conn, id, { pagos, usuario }) {
     const p = await bloquear(conn, id);
@@ -366,6 +405,9 @@ async function entregarYFacturar(conn, id, { pagos, usuario }) {
         if (p.metodo_pago_previsto === 'stripe') {
             if (!p.stripe_pago_id) throw new ErrorPublico('Genera el enlace de pago de Stripe primero');
             pagosFinal = [{ metodo: 'stripe', monto: total, stripe_pago_id: p.stripe_pago_id }];
+        } else if (p.metodo_pago_previsto === 'cripto') {
+            if (!p.cripto_pago_id) throw new ErrorPublico('Genera el cobro cripto primero');
+            pagosFinal = [{ metodo: 'cripto', monto: total, cripto_pago_id: p.cripto_pago_id }];
         } else if (p.metodo_pago_previsto === 'transferencia') {
             if (!Number(p.pago_validado)) throw new ErrorPublico('Valida primero la transferencia del cliente');
             pagosFinal = [{ metodo: 'transferencia', monto: total, referencia: `Validada por ${usuario || 'personal'}` }];
@@ -406,6 +448,6 @@ async function estadoPorTelefono(conn, telefono) {
 
 module.exports = {
     getConfig, listarZonas, cotizar, crearPedido, listar, confirmar, cancelar, asignarRepartidor,
-    marcarEnCamino, validarTransferencia, cobroStripe, entregarYFacturar, estadoPorTelefono, codigoPedido,
+    marcarEnCamino, validarTransferencia, cobroStripe, cobroCripto, entregarYFacturar, estadoPorTelefono, codigoPedido,
     asegurarProductoEnvio
 };

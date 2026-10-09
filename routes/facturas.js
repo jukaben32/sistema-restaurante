@@ -6,6 +6,7 @@ const path = require('path');
 const os = require('os');
 const { exec } = require('child_process');
 const stripeService = require('../services/stripe');
+const criptoService = require('../services/cripto');
 const inventarioService = require('../services/inventario');
 
 // Validar rutas de retorno (evitar open-redirect / URLs externas)
@@ -33,7 +34,7 @@ function normalizarPagos(pagos) {
             monto: Number(p.monto || 0),
             referencia: (p.referencia != null && String(p.referencia).trim() !== '') ? String(p.referencia).trim() : null
         }))
-        .filter(p => ['efectivo', 'transferencia', 'tarjeta', 'qr'].includes(p.metodo) && Number.isFinite(p.monto) && p.monto > 0);
+        .filter(p => ['efectivo', 'transferencia', 'tarjeta', 'qr', 'cripto'].includes(p.metodo) && Number.isFinite(p.monto) && p.monto > 0);
 }
 
 function sumatoriaPagos(pagos) {
@@ -168,8 +169,8 @@ router.post('/', async (req, res) => {
     }
 
     // Validación rápida (sin Stripe) antes de abrir la transacción
-    const pagosSinStripe = Array.isArray(pagos) ? pagos.filter(p => String(p?.metodo || '').toLowerCase() !== 'stripe') : pagos;
-    const hayStripe = Array.isArray(pagos) && pagos.length !== pagosSinStripe.length;
+    const pagosSinOnline = Array.isArray(pagos) ? pagos.filter(p => !['stripe', 'cripto'].includes(String(p?.metodo || '').toLowerCase())) : pagos;
+    const hayStripe = Array.isArray(pagos) && pagos.length !== pagosSinOnline.length;
     if (!hayStripe) {
         const pre = normalizarPagos(pagos);
         if (pre.length > 0 && sumatoriaPagos(pre) < Number(totalNum) - 0.01) {
@@ -190,7 +191,9 @@ router.post('/', async (req, res) => {
             const stripeAplicado = await stripeService.aplicarPagosStripe(connection, pagos);
 
             // Si vienen pagos (pago mixto), validamos y definimos forma_pago compatible
-            const pagosNorm = normalizarPagos(stripeAplicado.pagos);
+            // Pagos con cripto (BTCPay): misma verificación dentro de la transacción
+            const criptoAplicado = await criptoService.aplicarPagosCripto(connection, stripeAplicado.pagos);
+            const pagosNorm = normalizarPagos(criptoAplicado.pagos);
             let formaPagoDB = (forma_pago || 'efectivo');
             if (pagosNorm.length > 0) {
                 const suma = sumatoriaPagos(pagosNorm);
@@ -202,7 +205,7 @@ router.post('/', async (req, res) => {
             } else {
                 // Compatibilidad con flujo anterior (un solo medio)
                 const fp = String(forma_pago || 'efectivo').toLowerCase();
-                formaPagoDB = ['efectivo', 'transferencia', 'tarjeta', 'qr', 'mixto'].includes(fp) ? fp : 'efectivo';
+                formaPagoDB = ['efectivo', 'transferencia', 'tarjeta', 'qr', 'cripto', 'mixto'].includes(fp) ? fp : 'efectivo';
             }
 
             // Insertar factura
@@ -249,6 +252,7 @@ router.post('/', async (req, res) => {
             }
 
             await stripeService.marcarUsados(connection, stripeAplicado.ids, factura_id);
+            await criptoService.marcarUsados(connection, criptoAplicado.ids, factura_id);
             // Inventario: descuento de insumos por receta
             await inventarioService.descontarPorFactura(connection, factura_id, req.session?.user?.usuario || null);
 

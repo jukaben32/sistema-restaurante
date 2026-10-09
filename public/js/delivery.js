@@ -31,6 +31,12 @@
       if (p.stripe_estado === 'pendiente') return '<span class="rm-chip warn"><i class="bi bi-hourglass-split"></i>Esperando pago Stripe</span>';
       return '<span class="rm-chip warn"><i class="bi bi-credit-card"></i>Stripe: sin enlace</span>';
     }
+    if (p.metodo_pago_previsto === 'cripto') {
+      if (['pagado', 'usado'].includes(p.cripto_estado)) return '<span class="rm-chip ok"><i class="bi bi-check-circle-fill"></i>Pagado (cripto)</span>';
+      if (p.cripto_estado === 'procesando') return '<span class="rm-chip warn"><i class="bi bi-hourglass-split"></i>Pago cripto detectado</span>';
+      if (p.cripto_estado === 'pendiente') return '<span class="rm-chip warn"><i class="bi bi-hourglass-split"></i>Esperando pago cripto</span>';
+      return '<span class="rm-chip warn"><i class="bi bi-currency-bitcoin"></i>Cripto: sin cobro</span>';
+    }
     if (p.metodo_pago_previsto === 'transferencia') {
       return Number(p.pago_validado) ? '<span class="rm-chip ok"><i class="bi bi-check-circle-fill"></i>Transferencia validada</span>'
         : '<span class="rm-chip warn"><i class="bi bi-bank"></i>Transferencia por validar</span>';
@@ -46,6 +52,7 @@
     const items = p.items.map((i) => `<div class="it"><span>${i.cantidad}× ${esc(i.nombre)}${i.nota ? `<small>${esc(i.nota)}</small>` : ''}</span></div>`).join('');
     const col = p.columna;
     const stripePend = p.metodo_pago_previsto === 'stripe' && !['pagado', 'usado'].includes(p.stripe_estado);
+    const criptoPend = p.metodo_pago_previsto === 'cripto' && !['pagado', 'usado'].includes(p.cripto_estado);
     const btns = [];
     if (col === 'por_confirmar') {
       btns.push('<button class="btn btn-sm btn-success" data-a="confirmar"><i class="bi bi-check2"></i> Confirmar</button>');
@@ -53,6 +60,7 @@
     }
     if (['por_confirmar', 'en_cocina', 'listo', 'en_camino'].includes(col)) {
       if (stripePend) btns.push('<button class="btn btn-sm btn-outline-primary" data-a="stripe"><i class="bi bi-qr-code"></i> Link de pago</button>');
+      if (criptoPend) btns.push('<button class="btn btn-sm btn-outline-primary" data-a="cripto"><i class="bi bi-currency-bitcoin"></i> Cobro cripto</button>');
       if (p.metodo_pago_previsto === 'transferencia' && !Number(p.pago_validado)) btns.push('<button class="btn btn-sm btn-outline-primary" data-a="validar"><i class="bi bi-bank"></i> Validar pago</button>');
     }
     if (col === 'en_cocina') btns.push('<button class="btn btn-sm btn-outline-danger" data-a="cancelar">Cancelar</button>');
@@ -130,6 +138,7 @@
         await post(`/api/delivery/${p.id}/repartidor`, { repartidor: r.value });
       }
       else if (a === 'stripe') { await mostrarLinkStripe(p); return; }
+      else if (a === 'cripto') { await mostrarCobroCripto(p); return; }
       else if (a === 'entregar') { await entregar(p); }
       cargar();
     } catch (err) { falla(err); }
@@ -144,6 +153,26 @@
       title: `Pago de ${p.codigo}`,
       html: `<div class="fs-4 fw-bold">${money(p.total)}</div><div class="rm-qr my-2"><img src="${r.qr}" alt="QR de pago"></div>
              <div class="small text-muted mb-2">El cliente puede escanear el QR o abrir el enlace.</div>
+             <div class="d-flex justify-content-center gap-2 flex-wrap">
+               <button type="button" class="btn btn-outline-secondary btn-sm" id="swCopiar"><i class="bi bi-link-45deg"></i> Copiar enlace</button>
+               ${wa ? `<a class="btn btn-success btn-sm" target="_blank" rel="noopener" href="${wa}"><i class="bi bi-whatsapp"></i> Enviar por WhatsApp</a>` : ''}
+             </div>`,
+      confirmButtonText: 'Listo',
+      didOpen: () => { document.getElementById('swCopiar').addEventListener('click', async (ev) => { try { await navigator.clipboard.writeText(r.url); ev.currentTarget.innerHTML = '<i class="bi bi-check2"></i> Copiado'; } catch (_) {} }); }
+    });
+    cargar();
+  }
+
+  async function mostrarCobroCripto(p) {
+    const r = await post(`/api/delivery/${p.id}/cobro-cripto`);
+    if (r.estado === 'pagado') { Swal.fire({ icon: 'success', title: 'Ya está pagado' }); cargar(); return; }
+    const msg = `Hola ${p.cliente_nombre || ''}, aquí puedes pagar tu pedido ${p.codigo} (${money(p.total)}) con Bitcoin o Lightning: ${r.url}`;
+    const wa = p.cliente_telefono ? `https://wa.me/${String(p.cliente_telefono).replace(/\D/g, '')}?text=${encodeURIComponent(msg)}` : '';
+    await Swal.fire({
+      title: `Pago cripto de ${p.codigo}`,
+      html: `<div class="fs-4 fw-bold">${money(p.total)}</div>${r.monto_btc ? `<div class="small text-muted">≈ ${String(r.monto_btc).replace(/[<>&]/g, '')} BTC</div>` : ''}
+             <div class="rm-qr my-2"><img src="${r.qr}" alt="QR de pago"></div>
+             <div class="small text-muted mb-2">El cliente escanea el QR o abre el enlace y paga con su billetera (Bitcoin o Lightning).</div>
              <div class="d-flex justify-content-center gap-2 flex-wrap">
                <button type="button" class="btn btn-outline-secondary btn-sm" id="swCopiar"><i class="bi bi-link-45deg"></i> Copiar enlace</button>
                ${wa ? `<a class="btn btn-success btn-sm" target="_blank" rel="noopener" href="${wa}"><i class="bi bi-whatsapp"></i> Enviar por WhatsApp</a>` : ''}

@@ -103,6 +103,7 @@ $(function() {
                   <option value="tarjeta">Tarjeta</option>
                   <option value="qr">QR</option>
                   ${window.__stripeOn ? '<option value="stripe">Stripe (QR al cliente)</option>' : ''}
+                  ${window.__criptoOn ? '<option value="cripto">Cripto — Bitcoin ⚡ (QR al cliente)</option>' : ''}
                 </select>
               </div>
               <div class="col-4">
@@ -902,6 +903,10 @@ $(function() {
   if (window.StripeCobro) {
     window.StripeCobro.estado().then(e => { window.__stripeOn = !!(e && e.habilitado); });
   }
+  // ¿Cripto (BTCPay) activo? También aparece como opción en el modal de pagos
+  if (window.CriptoCobro) {
+    window.CriptoCobro.estado().then(e => { window.__criptoOn = !!(e && e.habilitado); });
+  }
 
   // refrescar cada 3s
   setInterval(refreshMesas, 3000);
@@ -933,10 +938,13 @@ $(function() {
       // Filas "Stripe": se cobran con QR al cliente antes de facturar
       // Relacionado con: public/js/stripe-cobro.js y routes/stripe.js
       const pagos = await runWithOffcanvasHidden(async () => {
-        return await window.StripeCobro.resolverPagos(pagosModal, {
+        const opts = {
           pedidoId: pedidoActual.id,
           descripcion: `Mesa ${pedidoActual.mesa_numero || pedidoActual.mesa_id || ''}`.trim()
-        });
+        };
+        const sinStripe = await window.StripeCobro.resolverPagos(pagosModal, opts);
+        // Filas "Cripto": QR de BTCPay (public/js/cripto-cobro.js)
+        return sinStripe ? await window.CriptoCobro.resolverPagos(sinStripe, opts) : null;
       });
       if(!pagos) return; // cobro cancelado
 

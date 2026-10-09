@@ -70,7 +70,7 @@ const HERRAMIENTAS = [
         name: 'crearPedido',
         description:
             'Registra el pedido del cliente. Llámala SOLO cuando el cliente haya confirmado explícitamente los platos, el total, la dirección y la forma de pago. ' +
-            'El pedido queda pendiente: el restaurante lo confirma enseguida. Si el pago es con tarjeta (stripe) devuelve un enlace seguro de pago para enviarle al cliente.',
+            'El pedido queda pendiente: el restaurante lo confirma enseguida. Si el pago es con tarjeta (stripe) o con criptomonedas (cripto) devuelve un enlace seguro de pago para enviarle al cliente.',
         parameters: {
             type: 'object',
             properties: {
@@ -80,7 +80,7 @@ const HERRAMIENTAS = [
                 direccion: { type: 'string', description: 'Dirección de entrega completa: hotel o villa, calle, sector (solo delivery)' },
                 referencia: { type: 'string', description: 'Punto de referencia para llegar (opcional)' },
                 zona: { type: 'string', description: 'Zona de entrega, tal como la devuelve infoRestaurante (solo delivery)' },
-                metodoPago: { type: 'string', enum: ['efectivo', 'transferencia', 'stripe'], description: 'efectivo al recibir, transferencia bancaria, o stripe (tarjeta con enlace de pago)' },
+                metodoPago: { type: 'string', enum: ['efectivo', 'transferencia', 'stripe', 'cripto'], description: 'efectivo al recibir, transferencia bancaria, stripe (tarjeta con enlace de pago) o cripto (Bitcoin/Lightning con enlace de pago)' },
                 notas: { type: 'string', description: 'Notas generales del pedido (opcional)' },
                 telefonoContacto: { type: 'string', description: 'SOLO si el sistema no reconoce el teléfono del cliente: número de contacto que él te dicte' }
             },

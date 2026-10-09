@@ -40,6 +40,7 @@ Genera valores aleatorios largos con `node -e "console.log(require('crypto').ran
 1. **Configuración → Delivery y agentes**: horario, zonas de entrega con su costo, pedido mínimo, datos de transferencia, teléfono para pasar con una persona y preguntas frecuentes.
 2. **Productos**: marca "Mostrar en el menú", categoría y descripción de cada plato (los asistentes solo ofrecen platos publicados y disponibles).
 3. **Configuración → Pagos con Stripe**: pega tus llaves y activa el interruptor.
+4. (Opcional) **Configuración → Pagos con cripto**: URL de tu BTCPay Server, Store ID y API key (permisos mínimos: ver, crear y modificar facturas, y ver tiendas). Si lo instalas en tu VPS con Dokploy, necesita unos 2 GB de RAM; la opción más simple es un hosting de BTCPay ya listo. Pon la política de velocidad de la tienda en *High speed* para que los pagos pequeños no hagan esperar al cliente.
 
 ## 5. Agente de voz (Vapi)
 1. En Vapi, compra o importa un número y copia su **Phone Number ID**.

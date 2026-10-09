@@ -223,6 +223,7 @@ Si el restaurante usa el **menú digital por QR**, el cliente puede pedir desde 
 4. Aparece **"Forma de pago"** con el **Total a pagar**. Elige cómo paga el cliente:
    - **Efectivo**, **Transferencia**, **Tarjeta** (datáfono), **QR**.
    - **Stripe (QR al cliente)**: aparece solo si el administrador activó Stripe. El cliente escanea un código y paga con su tarjeta o Apple Pay / Google Pay desde su celular (ver 4.9).
+   - **Cripto — Bitcoin ⚡ (QR al cliente)**: aparece solo si el administrador activó los pagos con cripto. El cliente escanea un código con su billetera y paga con Bitcoin o Lightning (ver 4.9, parte "Cobrar con cripto").
 5. Puedes **combinar medios**: toca **Agregar medio** y reparte el total (por ejemplo, la mitad en efectivo y la mitad con tarjeta). El sistema te muestra **Falta** o **Sobra** hasta que cuadre el total.
 6. Si el cliente paga con un billete más grande, escribe el monto que **recibiste**; el sistema calcula y guarda solo lo cobrado (tú das el vuelto).
 7. Toca **Confirmar pago**.
@@ -236,6 +237,17 @@ Si el restaurante usa el **menú digital por QR**, el cliente puede pedir desde 
 5. Si el cliente se arrepiente, toca **Cancelar cobro**. Si ya había pagado justo en ese momento, el sistema lo detecta y respeta el pago.
 
 > 💡 Un mismo pago de Stripe **no puede usarse dos veces**: el sistema lo impide.
+
+#### Cobrar con cripto (Bitcoin o Lightning)
+Funciona igual que Stripe, pero el cliente paga con una **billetera de criptomonedas** en su celular (por ejemplo Wallet of Satoshi, Muun, Phoenix o la de su exchange). El dinero llega **directo a tu billetera**, sin intermediarios.
+1. En **Forma de pago** elige **Cripto — Bitcoin ⚡ (QR al cliente)**. Solo aparece si el administrador lo activó.
+2. Se abre la ventana **"Cobrar con cripto"** con el monto y su equivalente aproximado en **BTC**.
+3. Hay dos pestañas: **⚡ Lightning** (instantáneo, la mejor opción) y **₿ Bitcoin** (red normal de Bitcoin, puede tardar unos minutos). Muestra la que prefiera el cliente.
+4. El cliente abre su billetera, **escanea el QR** y confirma el pago. Si no puede escanear, toca **Copiar** y se lo envías, o **Abrir página de pago**.
+5. Cuando el pago llega, la ventana dice **"Pago confirmado"** y sigue con la factura. Si el pago de Bitcoin ya se vio pero falta confirmar, dice **"Pago detectado, confirmando…"**: espera.
+6. Si el cliente se arrepiente, toca **Cancelar cobro**.
+
+> 💡 Un mismo pago cripto **no puede usarse dos veces**. Si te piden **devolver** un pago cripto, se hace **a mano desde tu BTCPay**: el sistema no devuelve dinero solo.
 
 ### 4.10 La factura: imprimir y enviar por WhatsApp
 En la pantalla de la factura verás:
@@ -285,7 +297,7 @@ Toca **Delivery** en el menú. Es un tablero con **5 columnas**. Cada pedido es 
 2. Elige **Delivery** (a domicilio) o **Para llevar** (el cliente lo recoge).
 3. Escribe el **Teléfono / WhatsApp**. Si el cliente ya compró antes, el sistema **rellena solo** su nombre y dirección.
 4. Completa **Nombre**, **Dirección de entrega**, **Referencia** (por ejemplo "frente al colmado") y elige la **Zona** (cada zona tiene su costo de envío).
-5. En **Pago** elige **Efectivo al recibir**, **Transferencia** o **Tarjeta en línea (enlace Stripe)**.
+5. En **Pago** elige **Efectivo al recibir**, **Transferencia**, **Tarjeta en línea (enlace Stripe)** o **Cripto — Bitcoin ⚡ (QR de pago)**.
 6. En **Agregar platos** busca y agrega los productos. Puedes poner una nota por plato.
 7. Abajo ves **Subtotal**, **Envío** y **Total**.
 8. Deja marcado **Enviar directo a cocina** (si lo desmarcas, queda en "Por confirmar").
@@ -295,6 +307,7 @@ Toca **Delivery** en el menú. Es un tablero con **5 columnas**. Cada pedido es 
 - **Efectivo:** al entregar, toca **Entregado y cobrar** y confirma **"Sí, entregar y facturar"** después de recibir el dinero.
 - **Transferencia:** toca **Validar pago** cuando veas el dinero en tu cuenta. Sin ese paso el sistema no deja entregar.
 - **Tarjeta en línea:** toca **Link de pago**. Te muestra un **QR y un enlace**: toca **Copiar enlace** o **Enviar por WhatsApp**. Cuando el cliente paga, la tarjeta muestra **"Pagado (Stripe)"**.
+- **Cripto:** toca **Cobro cripto**. Te muestra un **QR y un enlace**: toca **Copiar enlace** o **Enviar por WhatsApp**. Cuando el cliente paga, la tarjeta muestra **"Pagado (cripto)"** y llega un aviso de **pago recibido**.
 - Si aún no se definió el pago, el sistema te pregunta **Efectivo, Tarjeta (datáfono) o Transferencia** al entregar.
 
 **Otras acciones:** **asignar repartidor** (nombre de quien lleva el pedido), llamar o escribir por WhatsApp al cliente con los íconos junto a su teléfono, y **Cancelar** un pedido (con motivo). Si el cliente ya había pagado con Stripe, el sistema te recuerda **hacer el reembolso en el panel de Stripe**.
@@ -390,7 +403,7 @@ Es la pantalla de **Inicio** (ícono de casa). Sirve para vender **sin mesa**: u
 1. **Cliente:** en *Buscar cliente por nombre o teléfono…* escribe y elige. Si no existe, toca **Nuevo cliente**, llena **Nombre**, **Dirección**, **Teléfono** y guarda.
 2. **Producto:** en *Buscar producto por nombre o código…* elige el plato. Escribe la **Cantidad**, elige la **Unidad** (**UND**, **KG** o **LB**) y revisa el **Precio**. Toca el botón **+ (Agregar producto)**.
 3. Repite para cada producto. Abajo ves la tabla con **Producto, Cantidad, Unidad, Precio Unit., Subtotal, Acciones** y el **Total**.
-4. Elige la **forma de pago**: **Efectivo**, **Transferencia**, **Tarjeta**, **QR**, **Stripe (QR al cliente)** o **Pago mixto (varios medios)**.
+4. Elige la **forma de pago**: **Efectivo**, **Transferencia**, **Tarjeta**, **QR**, **Stripe (QR al cliente)**, **Cripto — Bitcoin ⚡ (QR al cliente)** o **Pago mixto (varios medios)**.
 5. Toca **Generar factura** (o `Ctrl+G`). Se abre la factura para imprimir.
 
 **Guardar un pedido para después:** toca **Guardar pedido** (o `Ctrl+S`) para dejarlo en pausa, y **Ver pedidos guardados** para retomarlo.
@@ -484,7 +497,7 @@ Menú → **Inventario**. Tiene 3 pestañas.
 Funciona igual que en la parte 4.15. Como administrador, además puedes copiar el enlace público **/reservar** y compartirlo en redes sociales o WhatsApp para que los clientes reserven solos. Revisa a diario las que estén **Por confirmar**.
 
 ### 6.9 Ajustes (Configuración)
-Menú → **Ajustes**. Arriba hay accesos: **Asistentes IA**, **Delivery y agentes**, **QR del menú**, **Pagos con Stripe**. Y abajo, 3 pestañas: **Negocio**, **Impresión** y **Red**.
+Menú → **Ajustes**. Arriba hay accesos: **Asistentes IA**, **Delivery y agentes**, **QR del menú**, **Pagos con Stripe**, **Pagos con cripto**. Y abajo, 3 pestañas: **Negocio**, **Impresión** y **Red**.
 
 #### A) Pestaña Negocio
 Datos que salen en las facturas:
@@ -518,6 +531,16 @@ Permite cobrar con tarjeta desde el celular del cliente. El dinero va directo a 
 6. **Prueba:** con llaves de prueba, paga con la tarjeta de ejemplo `4242 4242 4242 4242`, cualquier fecha futura y cualquier CVC.
 - Las llaves se guardan **cifradas**. Para cambiar la llave, pega una nueva (si dejas el campo vacío, se conserva la anterior).
 - **El webhook es opcional**: el sistema consulta a Stripe directamente.
+
+#### D2) Pagos con cripto (Bitcoin y Lightning)
+Permite que los clientes paguen escaneando un QR con su billetera de criptomonedas. Usa **BTCPay Server**, un programa **gratuito y de código abierto** que tú controlas: el dinero llega **directo a tu billetera**, sin comisiones de intermediarios.
+1. Ten un **BTCPay Server** (lo más fácil: contratar un hosting de BTCPay ya listo; también se puede instalar en tu servidor). Pídele ayuda a quien te instaló el sistema.
+2. En BTCPay crea una **tienda**, conecta **tu billetera** y activa **Lightning** para pagos instantáneos.
+3. En BTCPay crea una **API key** (*Manage Account → API Keys*) con solo estos permisos, limitada a tu tienda: **ver facturas**, **crear facturas**, **modificar facturas** y **ver tiendas**.
+4. En el sistema: **Ajustes → Pagos con cripto**. Pega la **dirección de tu BTCPay**, el **Store ID** y la **API key**, enciende **Aceptar pagos con cripto**, toca **Probar conexión** y luego **Guardar**.
+- La API key se guarda **cifrada**. Si dejas el campo vacío al guardar, se conserva la anterior.
+- **Moneda:** deja la de tus precios (peso dominicano). Si tu BTCPay no tiene tasa de cambio para ella, elige **USD** y escribe cuántos pesos vale 1 dólar (actualízalo cuando cambie).
+- **Importante:** en la República Dominicana las criptomonedas **no son moneda de curso legal**: nadie está obligado a aceptarlas y su uso es voluntario. Las ganancias al vender cripto se declaran a la DGII. **Consulta con tu contador.**
 
 #### E) QR del menú por mesa
 **Ajustes → QR del menú** (o botón **QR menú** en Mesas).

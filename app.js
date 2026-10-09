@@ -147,6 +147,11 @@ app.use(inventarioRoutes);
 app.use('/api/stripe', personal, stripeRoutes.staff);
 app.use('/configuracion/stripe', requireRole('administrador'), stripeRoutes.admin);
 
+// Cripto (BTCPay Server): cobros (personal) y configuración (admin)
+const criptoRoutes = require('./routes/cripto');
+app.use('/api/cripto', personal, criptoRoutes.staff);
+app.use('/configuracion/cripto', requireRole('administrador'), criptoRoutes.admin);
+
 // Delivery / para llevar (personal) y datos del negocio para delivery y agentes (admin)
 const deliveryRoutes = require('./routes/delivery');
 const agentesRoutes = require('./routes/agentes');

@@ -8,6 +8,7 @@ const db = require('../../db');
 const delivery = require('../delivery');
 const reservas = require('../reservas');
 const stripeService = require('../stripe');
+const criptoService = require('../cripto');
 const clientesService = require('../clientes');
 const conversaciones = require('./conversaciones');
 const notificaciones = require('./notificaciones');
@@ -71,6 +72,7 @@ async function formasDePago() {
     const formas = ['efectivo'];
     if (cfg.datosTransferencia) formas.push('transferencia');
     try { if ((await stripeService.getStripeConfig()).habilitado) formas.push('stripe'); } catch (_) { /* sin Stripe */ }
+    try { if ((await criptoService.getCriptoConfig()).habilitado) formas.push('cripto'); } catch (_) { /* sin cripto */ }
     return { formas, cfg };
 }
 
@@ -196,6 +198,15 @@ const HANDLERS = {
             } catch (e) {
                 console.error('No se pudo crear el enlace de pago del agente:', e.message);
                 out.aviso_pago = 'No pude generar el enlace de pago. Dile al cliente que el restaurante se lo enviará por WhatsApp.';
+            }
+        } else if (metodo === 'cripto') {
+            try {
+                const cobro = await delivery.cobroCripto(r.pedido_id, { usuario: nombreAgente(ctx) });
+                out.enlace_pago = cobro.url;
+                textoExtra = `Paga tu pedido ${r.codigo} con Bitcoin o Lightning aquí: ${cobro.url}`;
+            } catch (e) {
+                console.error('No se pudo crear el cobro cripto del agente:', e.message);
+                out.aviso_pago = 'No pude generar el enlace de pago cripto. Dile al cliente que el restaurante se lo enviará por WhatsApp.';
             }
         } else if (metodo === 'transferencia') {
             out.datos_transferencia = cfg.datosTransferencia;

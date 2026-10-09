@@ -4,10 +4,11 @@
 // Relacionado con: routes/mesas.js (POST /pedidos/:id/facturar), services/delivery.js (entregar),
 // services/stripe.js (aplicarPagosStripe/marcarUsados), services/inventario.js
 const stripeService = require('./stripe');
+const criptoService = require('./cripto');
 const inventario = require('./inventario');
 const { ErrorPublico } = require('./errores');
 
-const METODOS = ['efectivo', 'transferencia', 'tarjeta', 'qr'];
+const METODOS = ['efectivo', 'transferencia', 'tarjeta', 'qr', 'cripto'];
 
 function normalizarPagos(arr) {
     if (!Array.isArray(arr)) return [];
@@ -43,7 +44,9 @@ async function facturarPedido(connection, { pedidoId, clienteId, formaPago, pago
 
     // Pagos con Stripe: se verifican contra Stripe y se convierten en pagos de tarjeta
     const stripeAplicado = await stripeService.aplicarPagosStripe(connection, pagos);
-    const pagosNorm = normalizarPagos(stripeAplicado.pagos);
+    // Pagos con cripto (BTCPay): igual, verificados y bloqueados dentro de la transacción
+    const criptoAplicado = await criptoService.aplicarPagosCripto(connection, stripeAplicado.pagos);
+    const pagosNorm = normalizarPagos(criptoAplicado.pagos);
     const sumaPagos = pagosNorm.reduce((acc, p) => acc + p.monto, 0);
 
     let formaPagoDB = String(formaPago || 'efectivo').toLowerCase();
@@ -79,6 +82,7 @@ async function facturarPedido(connection, { pedidoId, clienteId, formaPago, pago
     }
 
     await stripeService.marcarUsados(connection, stripeAplicado.ids, facturaId);
+    await criptoService.marcarUsados(connection, criptoAplicado.ids, facturaId);
     await inventario.descontarPorFactura(connection, facturaId, usuario);
     await connection.query(`UPDATE pedidos SET estado = 'cerrado', total = ?, factura_id = ? WHERE id = ?`, [total, facturaId, pedidoId]);
 

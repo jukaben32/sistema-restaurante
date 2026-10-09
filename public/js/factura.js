@@ -178,6 +178,14 @@ $(document).ready(function() {
             if (opt && window.__stripeOn) { opt.hidden = false; opt.disabled = false; }
         });
     }
+    // Cripto (BTCPay): igual que Stripe
+    if (window.CriptoCobro) {
+        window.CriptoCobro.estado().then(e => {
+            window.__criptoOn = !!(e && e.habilitado);
+            const opt = document.getElementById('optCripto');
+            if (opt && window.__criptoOn) { opt.hidden = false; opt.disabled = false; }
+        });
+    }
 
     function parseMoneyInput(value) {
         const v = String(value ?? '').trim();
@@ -253,6 +261,7 @@ $(document).ready(function() {
                                     <option value="tarjeta">Tarjeta</option>
                                     <option value="qr">QR</option>
                                     ${window.__stripeOn ? '<option value="stripe">Stripe (QR al cliente)</option>' : ''}
+                  ${window.__criptoOn ? '<option value="cripto">Cripto — Bitcoin ⚡ (QR al cliente)</option>' : ''}
                                 </select>
                             </div>
                             <div class="col-4">
@@ -739,7 +748,8 @@ $(document).ready(function() {
                 if (!pagos) return; // cancelado
                 try {
                     // Filas "Stripe": cobro con QR antes de facturar (public/js/stripe-cobro.js)
-                    const finales = await window.StripeCobro.resolverPagos(pagos, { descripcion: 'Venta rápida' });
+                    const conStripe = await window.StripeCobro.resolverPagos(pagos, { descripcion: 'Venta rápida' });
+                    const finales = conStripe ? await window.CriptoCobro.resolverPagos(conStripe, { descripcion: 'Venta rápida' }) : null;
                     if (!finales) return; // cobro cancelado
                     pagosFactura = finales;
                     enviarFactura(pagosFactura);
@@ -755,6 +765,17 @@ $(document).ready(function() {
                 .then(r => {
                     if (!r) return; // cobro cancelado
                     pagosFactura = [{ metodo: 'stripe', monto: r.monto, stripe_pago_id: r.stripe_pago_id }];
+                    enviarFactura(pagosFactura);
+                })
+                .catch(err => mostrarAlerta('error', err.message));
+            return;
+        }
+
+        if (forma_pago === 'cripto') {
+            window.CriptoCobro.cobrar({ monto: totalFactura, descripcion: 'Venta rápida' })
+                .then(r => {
+                    if (!r) return; // cobro cancelado
+                    pagosFactura = [{ metodo: 'cripto', monto: r.monto, cripto_pago_id: r.cripto_pago_id }];
                     enviarFactura(pagosFactura);
                 })
                 .catch(err => mostrarAlerta('error', err.message));
