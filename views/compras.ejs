@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('partials/head') %>
+    <title>Compras y gastos · Restaurant Martin</title>
+    <style>
+        .nav-pills .nav-link.active { background: var(--rm-ink); }
+        .nav-pills .nav-link { color: var(--rm-ink); font-weight: 600; }
+    </style>
+</head>
+<body class="rm">
+    <%- include('partials/navbar') %>
+    <main class="rm-page container pb-5">
+        <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+            <div>
+                <h1 class="rm-title h3"><i class="bi bi-cart-check me-2" style="color:var(--rm-accent)"></i>Compras y gastos</h1>
+                <p class="rm-sub">Anota aquí cada factura que te entrega un proveedor (comida, bebidas, luz, alquiler…). Con ellas el sistema arma el <b>Formato 606</b> que tu contador envía a la DGII cada mes.</p>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="/fiscal" class="btn btn-outline-secondary btn-sm align-self-start"><i class="bi bi-shield-check"></i> Fiscal</a>
+                <button class="btn btn-rm" id="btnNuevaCompra"><i class="bi bi-plus-lg"></i> Nueva compra</button>
+            </div>
+        </div>
+
+        <ul class="nav nav-pills mb-3 gap-1" role="tablist">
+            <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tabCompras" type="button">Compras</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabProv" type="button">Proveedores</button></li>
+        </ul>
+
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="tabCompras">
+                <div class="rm-card">
+                    <div class="rm-card-h flex-wrap gap-2">
+                        <label class="small fw-semibold mb-0" for="mes">Mes</label>
+                        <input type="month" id="mes" class="form-control form-control-sm" style="max-width:170px">
+                        <span class="ms-auto d-flex gap-2 flex-wrap">
+                            <a class="btn btn-sm btn-outline-secondary" id="dl606txt" href="#"><i class="bi bi-filetype-txt"></i> 606 (TXT para la DGII)</a>
+                            <a class="btn btn-sm btn-outline-secondary" id="dl606xls" href="#"><i class="bi bi-file-earmark-excel"></i> Excel para el contador</a>
+                        </span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table rm-table">
+                            <thead><tr><th>Fecha</th><th>Proveedor</th><th>NCF</th><th>Tipo de gasto</th><th class="text-end">Monto</th><th class="text-end">ITBIS</th><th></th></tr></thead>
+                            <tbody id="tbCompras"></tbody>
+                            <tfoot id="tfCompras"></tfoot>
+                        </table>
+                    </div>
+                </div>
+                <p class="small text-muted mt-2"><i class="bi bi-info-circle"></i> Guarda siempre la factura de compra en papel o foto: la DGII puede pedirla. El TXT se sube en la Oficina Virtual (OFV) antes del día 15 del mes siguiente; tu contador sabe cómo.</p>
+            </div>
+
+            <div class="tab-pane fade" id="tabProv">
+                <div class="rm-card">
+                    <div class="rm-card-h"><strong>Proveedores</strong><button class="btn btn-sm btn-rm ms-auto" id="btnNuevoProv"><i class="bi bi-plus-lg"></i> Nuevo proveedor</button></div>
+                    <div class="table-responsive">
+                        <table class="table rm-table">
+                            <thead><tr><th>Nombre</th><th>RNC / Cédula</th><th>Teléfono</th><th></th></tr></thead>
+                            <tbody id="tbProv"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal proveedor -->
+    <div class="modal fade" id="modalProv" tabindex="-1">
+        <div class="modal-dialog">
+            <form class="modal-content" id="formProv" autocomplete="off">
+                <div class="modal-header"><h5 class="modal-title" id="tituloProv">Nuevo proveedor</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+                <div class="modal-body">
+                    <input type="hidden" id="pId">
+                    <div class="row g-2">
+                        <div class="col-12"><label class="form-label small" for="pNombre">Nombre o razón social</label><input id="pNombre" class="form-control" required maxlength="150"></div>
+                        <div class="col-sm-7"><label class="form-label small" for="pDoc">RNC (9 dígitos) o cédula (11)</label><input id="pDoc" class="form-control" required inputmode="numeric" maxlength="14" placeholder="Solo números"></div>
+                        <div class="col-sm-5"><label class="form-label small" for="pTel">Teléfono (opcional)</label><input id="pTel" class="form-control" maxlength="30"></div>
+                        <div class="col-12 small text-muted">El sistema comprueba que el número sea válido: si te equivocas de un dígito, te lo avisa.</div>
+                    </div>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-rm" type="submit">Guardar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal compra -->
+    <div class="modal fade" id="modalCompra" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <form class="modal-content" id="formCompra" autocomplete="off">
+                <div class="modal-header"><h5 class="modal-title">Nueva compra o gasto</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+                <div class="modal-body">
+                    <div class="row g-2">
+                        <div class="col-md-6"><label class="form-label small" for="cProv">Proveedor</label>
+                            <select id="cProv" class="form-select" required></select></div>
+                        <div class="col-md-6"><label class="form-label small" for="cNcf">NCF de la factura</label>
+                            <input id="cNcf" class="form-control" required maxlength="13" placeholder="B0100000123 o E310000000123" style="text-transform:uppercase"></div>
+                        <div class="col-md-4"><label class="form-label small" for="cFecha">Fecha de la factura</label><input id="cFecha" type="date" class="form-control" required></div>
+                        <div class="col-md-4"><label class="form-label small" for="cFechaPago">Fecha de pago <span class="text-muted">(opcional)</span></label><input id="cFechaPago" type="date" class="form-control"></div>
+                        <div class="col-md-4"><label class="form-label small" for="cForma">Forma de pago</label><select id="cForma" class="form-select"></select></div>
+                        <div class="col-12"><label class="form-label small" for="cTipo">¿Qué compraste?</label><select id="cTipo" class="form-select"></select></div>
+                        <div class="col-md-6"><label class="form-label small" for="cBienes">Monto en productos (bienes) <span class="text-muted">sin ITBIS</span></label><input id="cBienes" type="number" step="0.01" min="0" value="0" class="form-control"></div>
+                        <div class="col-md-6"><label class="form-label small" for="cServ">Monto en servicios <span class="text-muted">sin ITBIS</span></label><input id="cServ" type="number" step="0.01" min="0" value="0" class="form-control"></div>
+                        <div class="col-md-4"><label class="form-label small" for="cItbis">ITBIS facturado</label><input id="cItbis" type="number" step="0.01" min="0" value="0" class="form-control"></div>
+                        <div class="col-md-4"><label class="form-label small" for="cItbisCosto">ITBIS que va al costo</label><input id="cItbisCosto" type="number" step="0.01" min="0" value="0" class="form-control"></div>
+                        <div class="col-md-4"><label class="form-label small" for="cPropina">Propina legal (restaurantes)</label><input id="cPropina" type="number" step="0.01" min="0" value="0" class="form-control"></div>
+                        <div class="col-12">
+                            <a class="small" data-bs-toggle="collapse" href="#masCampos" role="button">Más campos (retenciones, nota de crédito del proveedor)</a>
+                            <div class="collapse mt-2" id="masCampos">
+                                <div class="row g-2">
+                                    <div class="col-md-6"><label class="form-label small" for="cMod">NCF que modifica <span class="text-muted">(solo si es nota de crédito)</span></label><input id="cMod" class="form-control" maxlength="13" style="text-transform:uppercase"></div>
+                                    <div class="col-md-6"><label class="form-label small" for="cItbisRet">ITBIS retenido</label><input id="cItbisRet" type="number" step="0.01" min="0" value="0" class="form-control"></div>
+                                    <div class="col-md-6"><label class="form-label small" for="cRetRenta">Retención de renta</label><input id="cRetRenta" type="number" step="0.01" min="0" value="0" class="form-control"></div>
+                                    <div class="col-md-6"><label class="form-label small" for="cTipoRet">Tipo de retención ISR <span class="text-muted">(01–09, si aplica)</span></label><input id="cTipoRet" class="form-control" maxlength="2"></div>
+                                    <div class="col-12"><label class="form-label small" for="cNota">Nota (opcional)</label><input id="cNota" class="form-control" maxlength="300"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <hr class="my-2">
+                            <div class="small fw-semibold mb-1"><i class="bi bi-box-seam me-1"></i>¿Entra mercancía al inventario? <span class="text-muted fw-normal">(opcional)</span></div>
+                            <div id="entradas" class="vstack gap-2"></div>
+                            <button class="btn btn-sm btn-outline-secondary mt-2" type="button" id="btnEntrada"><i class="bi bi-plus-lg"></i> Agregar insumo que entra</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-rm" type="submit">Guardar compra</button></div>
+            </form>
+        </div>
+    </div>
+
+    <%- include('partials/footer') %>
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
+    <script src="/js/compras.js"></script>
+</body>
+</html>

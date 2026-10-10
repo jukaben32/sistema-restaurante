@@ -105,7 +105,14 @@ async function cotizar(conn, { items, zonaId = null, tipo = 'delivery', soloMenu
         }
         envio = zona ? zona.costo_envio : 0;
     }
-    return { lineas, subtotal, envio, total: subtotal + envio, zona };
+    // Impuestos y propina con el mismo motor que la factura (así lo que se cobra en línea es lo que se factura)
+    const itemsFiscales = lineas.map((l) => ({ producto_id: l.producto_id, cantidad: l.cantidad, precio_unitario: l.precio, subtotal: l.subtotal }));
+    if (envio > 0) {
+        const envioId = await asegurarProductoEnvio(conn);
+        itemsFiscales.push({ producto_id: envioId, cantidad: 1, precio_unitario: envio, subtotal: envio });
+    }
+    const fiscal = await facturacion.cotizarLineas(conn, itemsFiscales, { tipoPedido: tipo });
+    return { lineas, subtotal, envio, itbis: fiscal.itbis_total, propina: fiscal.propina, total: fiscal.total, fiscal, zona };
 }
 
 /**
@@ -180,6 +187,8 @@ async function crearPedido(conn, datos) {
         tipo,
         subtotal: cot.subtotal,
         costo_envio: cot.envio,
+        itbis: cot.itbis,
+        propina: cot.propina,
         total: cot.total,
         minutos_estimados: (cot.zona ? cot.zona.minutos_estimados : 0) + cfg.tiempoPreparacion,
         metodo_pago: metodo,
@@ -405,7 +414,7 @@ async function cobroCripto(id, { usuario, retornoUrl = null }) {
 }
 
 /** Entrega y factura: usa el medio de pago previsto o los pagos indicados por el personal. */
-async function entregarYFacturar(conn, id, { pagos, usuario }) {
+async function entregarYFacturar(conn, id, { pagos, usuario, quiereCreditoFiscal = false }) {
     const p = await bloquear(conn, id);
     if (!['en_cocina', 'en_camino'].includes(p.estado_delivery)) throw new ErrorPublico('El pedido debe estar confirmado para entregarlo');
     if (await lineasPendientes(conn, id) > 0) throw new ErrorPublico('Aún hay platos sin terminar en cocina');
@@ -423,13 +432,15 @@ async function entregarYFacturar(conn, id, { pagos, usuario }) {
             if (!Number(p.pago_validado)) throw new ErrorPublico('Valida primero la transferencia del cliente');
             pagosFinal = [{ metodo: 'transferencia', monto: total, referencia: `Validada por ${usuario || 'personal'}` }];
         } else {
-            pagosFinal = [{ metodo: 'efectivo', monto: total }];
+            // Efectivo: se cobra el total vigente (si cambió la configuración fiscal desde que se creó el pedido, el servidor lo recalcula)
+            const vigente = await facturacion.cotizarPedido(conn, id).then((q) => q.total).catch(() => total);
+            pagosFinal = [{ metodo: 'efectivo', monto: vigente }];
         }
     }
 
     await conn.query(`UPDATE pedido_items SET estado = 'servido', servido_at = NOW() WHERE pedido_id = ? AND estado = 'listo'`, [id]);
     const { facturaId } = await facturacion.facturarPedido(conn, {
-        pedidoId: id, clienteId: p.cliente_id, pagos: pagosFinal, usuario
+        pedidoId: id, clienteId: p.cliente_id, pagos: pagosFinal, usuario, quiereCreditoFiscal
     });
     await conn.query(`UPDATE pedidos SET estado_delivery = 'entregado', entregado_at = NOW() WHERE id = ?`, [id]);
     return { factura_id: facturaId };

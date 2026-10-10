@@ -36,7 +36,7 @@ $(function() {
   }
 
   function formatMoney(n) {
-    return `$${Number(n || 0).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `RD$\u00a0${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
 
   function almostEqualMoney(a, b) {
@@ -286,7 +286,7 @@ $(function() {
   });
 
   // Helpers UI
-  function formatear(valor){return `$${Number(valor||0).toLocaleString('es-CO')}`}
+  function formatear(valor){return `RD$\u00a0${Number(valor||0).toLocaleString('en-US')}`}
   function isItemAnulable(estado){
     const e = String(estado || '').toLowerCase();
     return ['pendiente','enviado','preparando','listo'].includes(e);
@@ -374,6 +374,7 @@ $(function() {
       `);
     });
     $('#totalPedido').text(formatear(total));
+    $('#notaImpuestos').toggleClass('d-none', !window.__fiscalActivo);
     renderProgreso();
     firmaItems = firmaDe(items);
   }
@@ -454,7 +455,7 @@ $(function() {
         const item = $(`
           <a href="#" class="list-group-item list-group-item-action">
             <div><strong>${p.codigo}</strong> - ${p.nombre}</div>
-            <div class="small text-muted">KG: $${p.precio_kg} | UND: $${p.precio_unidad} | LB: $${p.precio_libra}</div>
+            <div class="small text-muted">KG: RD$\u00a0${p.precio_kg} | UND: RD$\u00a0${p.precio_unidad} | LB: RD$\u00a0${p.precio_libra}</div>
           </a>`);
         item.on('click', e => {
           e.preventDefault();
@@ -1031,6 +1032,9 @@ $(function() {
   // Expuesto para public/js/alertas-mesas.js (refrescar al atender un pedido del menú QR)
   window.refreshMesas = refreshMesas;
 
+  // ¿Modo fiscal activo? Entonces el total del panel es antes de ITBIS y propina (se calculan al cobrar)
+  fetch('/api/fiscal/estado').then(r => r.json()).then(e => { window.__fiscalActivo = !!(e && e.activo); }).catch(() => {});
+
   // ¿Stripe activo? (muestra la opción en el modal de pagos)
   if (window.StripeCobro) {
     window.StripeCobro.estado().then(e => { window.__stripeOn = !!(e && e.habilitado); });
@@ -1045,6 +1049,41 @@ $(function() {
   // primera carga
   refreshMesas();
 
+  // Vista previa fiscal: el SERVIDOR calcula ITBIS, propina y total (el navegador solo muestra)
+  // Relacionado con: routes/fiscal.js (POST /api/fiscal/cotizar), services/facturacion.js
+  async function cotizarPedidoFiscal(pedidoId, clienteId, creditoFiscal) {
+    const r = await fetch('/api/fiscal/cotizar', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pedido_id: pedidoId, cliente_id: clienteId, credito_fiscal: !!creditoFiscal })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || 'No se pudo calcular el total');
+    return d;
+  }
+
+  // Muestra el desglose y deja elegir el tipo de comprobante: Consumo (E32) o Crédito fiscal (E31, el cliente debe tener RNC o cédula)
+  async function elegirComprobante(cot, cliente) {
+    const tieneDoc = cliente && ['rnc', 'cedula'].includes(cliente.tipo_documento) && cliente.documento;
+    const fila = (t, v, fuerte) => `<div class="d-flex justify-content-between ${fuerte ? 'fw-bold fs-5 border-top pt-2 mt-1' : ''}"><span>${t}</span><span>${formatMoney(v)}</span></div>`;
+    const r = await Swal.fire({
+      title: 'Cuenta',
+      html: `<div class="text-start">
+        ${fila('Subtotal', cot.subtotal)}
+        ${fila('ITBIS', cot.itbis)}
+        ${cot.propina > 0 ? fila(`Propina legal ${cot.propina_tasa}%`, cot.propina) : ''}
+        ${fila('TOTAL', cot.total, true)}
+        <hr>
+        <div class="fw-semibold mb-1">Tipo de comprobante</div>
+        <div class="form-check"><input class="form-check-input" type="radio" name="tipoComp" id="tcConsumo" checked><label class="form-check-label" for="tcConsumo">Factura de consumo <span class="text-muted small">(la normal)</span></label></div>
+        <div class="form-check"><input class="form-check-input" type="radio" name="tipoComp" id="tcCredito" ${tieneDoc ? '' : 'disabled'}><label class="form-check-label" for="tcCredito">Crédito fiscal <span class="text-muted small">(el cliente es una empresa y lo pide)</span></label></div>
+        <div class="small text-muted mt-1">${tieneDoc ? `Cliente: ${cliente.razon_social || cliente.nombre} · ${String(cliente.tipo_documento).toUpperCase()} ${cliente.documento}` : 'Para crédito fiscal el cliente debe tener RNC o cédula registrados (lo hace el administrador en Clientes).'}</div>
+      </div>`,
+      showCancelButton: true, confirmButtonText: 'Continuar al cobro', cancelButtonText: 'Cancelar',
+      preConfirm: () => ({ credito: !!document.getElementById('tcCredito').checked })
+    });
+    return r.isConfirmed ? r.value : null;
+  }
+
   // Facturar pedido
   $('#btnFacturarPedido').on('click', async function(){
     try{
@@ -1052,14 +1091,16 @@ $(function() {
       if(!cliente) return; // cancelado
       const cliente_id = cliente.id;
 
-      // Total del pedido basado en items actuales (mismo cálculo del render)
-      const totalPedido = (items || []).reduce((acc, it) => {
-        if (isItemExcluidoDeTotal(it.estado)) return acc;
-        const cantidad = Number(it.cantidad || 0);
-        const precio = Number((it.precio_unitario != null ? it.precio_unitario : it.precio) || 0);
-        const subtotal = Number(it.subtotal != null ? it.subtotal : (cantidad * precio));
-        return acc + subtotal;
-      }, 0);
+      // Total a cobrar: lo calcula el servidor (con ITBIS y propina legal cuando el modo fiscal está activo)
+      let cot = await cotizarPedidoFiscal(pedidoActual.id, cliente_id, false);
+      let credito_fiscal = false;
+      if (cot.fiscal) {
+        const eleccion = await runWithOffcanvasHidden(() => elegirComprobante(cot, cliente));
+        if (!eleccion) return;
+        credito_fiscal = eleccion.credito;
+        if (credito_fiscal) cot = await cotizarPedidoFiscal(pedidoActual.id, cliente_id, true);
+      }
+      const totalPedido = cot.total;
 
       // Modal de pago mixto (permite 1 o varios medios)
       const pagosModal = await runWithOffcanvasHidden(async () => {
@@ -1083,7 +1124,7 @@ $(function() {
       const resp = await fetch(`/api/mesas/pedidos/${pedidoActual.id}/facturar`, {
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ cliente_id, pagos })
+        body: JSON.stringify({ cliente_id, pagos, credito_fiscal })
       });
       const data = await resp.json();
       if(!resp.ok) throw new Error(data.error||'Error al facturar');
@@ -1164,14 +1205,14 @@ $(function() {
       const subtotal = Number(it.subtotal!=null?it.subtotal:(cantidad*precio));
       total += subtotal;
       const nombre = it.producto_nombre || it.nombre || '';
-      return `<tr><td>${nombre}</td><td class="text-end">${cantidad}</td><td class="text-end">$${subtotal.toLocaleString('es-CO')}</td></tr>`;
+      return `<tr><td>${nombre}</td><td class="text-end">${cantidad}</td><td class="text-end">RD$\u00a0${subtotal.toLocaleString('en-US')}</td></tr>`;
     }).join('');
     return `
       <div class="border rounded p-2 mt-2" id="contenedorResumen" style="display:none;max-height:220px;overflow:auto;">
         <table class="table table-sm mb-2">
           <thead class="table-light"><tr><th>Producto</th><th class="text-end">Cant</th><th class="text-end">Subt</th></tr></thead>
           <tbody>${rows}</tbody>
-          <tfoot class="table-light"><tr><th colspan="2" class="text-end">Total</th><th class="text-end">$${total.toLocaleString('es-CO')}</th></tr></tfoot>
+          <tfoot class="table-light"><tr><th colspan="2" class="text-end">Total</th><th class="text-end">RD$\u00a0${total.toLocaleString('en-US')}</th></tr></tfoot>
         </table>
       </div>`;
   }

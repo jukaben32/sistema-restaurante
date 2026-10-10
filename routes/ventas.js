@@ -18,9 +18,9 @@ function buildVentasWhere(queryParams) {
     }
 
     if (queryParams.q) {
-        where.push('(c.nombre ILIKE ? OR CAST(f.id AS TEXT) LIKE ?)');
+        where.push('(c.nombre ILIKE ? OR CAST(f.id AS TEXT) LIKE ? OR f.ncf ILIKE ?)');
         const term = `%${queryParams.q}%`;
-        params.push(term, term);
+        params.push(term, term, term);
     }
 
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
@@ -314,7 +314,7 @@ router.get('/export', async (req, res) => {
         // ── Datos base ────────────────────────────────────────────────────────
         const { whereSql, params } = buildVentasWhere(req.query);
         const queryFinal = `
-            SELECT f.id, f.fecha, c.nombre AS cliente, f.forma_pago, f.total,
+            SELECT f.id, f.fecha, c.nombre AS cliente, f.forma_pago, f.total, f.ncf, f.itbis_total, f.propina, f.factura_origen_id,
                    p.nombre AS producto,
                    df.cantidad, df.precio_unitario, df.subtotal AS subtotal_item, df.unidad_medida
             FROM facturas f
@@ -476,7 +476,7 @@ router.get('/export', async (req, res) => {
 
         const detColNames = [
             'Factura #', 'Fecha', 'Cliente', 'Método Pago',
-            'Producto', 'Cantidad', 'Unidad', 'Precio Unitario', 'Subtotal Ítem', 'Total Factura'
+            'Producto', 'Cantidad', 'Unidad', 'Precio Unitario', 'Subtotal Ítem', 'Total Factura', 'NCF / e-NCF', 'ITBIS', 'Propina legal'
         ];
         const detHeader = wsD.addRow(detColNames);
         applyHeaderStyle(detHeader, 'FF1E3A5F');
@@ -500,8 +500,12 @@ router.get('/export', async (req, res) => {
                 (r.unidad_medida || ''),
                 Number(r.precio_unitario || 0),
                 Number(r.subtotal_item || 0),
-                totalFactura
+                totalFactura,
+                isFirstOfFactura ? (r.ncf || '') : null,
+                isFirstOfFactura ? Number(r.itbis_total || 0) : null,
+                isFirstOfFactura ? Number(r.propina || 0) : null
             ]);
+            if (isFirstOfFactura) { dataRow.getCell(12).numFmt = MONEDA; dataRow.getCell(13).numFmt = MONEDA; }
 
             // Zebra striping por factura (alterna por id de factura)
             const bgArgb = (r.id % 2 === 0) ? 'FFFAFAFA' : 'FFECEFF1';

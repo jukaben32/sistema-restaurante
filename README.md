@@ -36,10 +36,23 @@ Para usarla desde otros equipos de la red local, abre el puerto 3000 en el firew
 | **Inventario**: insumos, recetas por plato con costo y margen, descuento automático al facturar, **unidades kg ⇄ lb intercambiables con conversión automática** (stock, costo, recetas e historial), alertas de stock bajo | `/inventario` | Admin |
 | **Dashboard en vivo**: ventas de hoy vs. ayer, 7 días, más vendidos, mesas, cocina, reservas, stock | `/dashboard` (inicio del admin) | Admin |
 | **Cobro con criptomonedas** (Bitcoin y Lightning vía tu propio BTCPay Server): QR en pantalla, el cliente paga con su billetera; el pago se verifica en el servidor y no puede aplicarse dos veces. También en Delivery y en los asistentes IA | Mesas, Venta rápida y Delivery → "Cripto" · Configuración → Pagos con cripto | Mesero / Admin |
-| **Factura por WhatsApp** | Botón en la factura | Todos |
+| **Cumplimiento fiscal DGII (República Dominicana)**: ITBIS (18/16/0/exento por producto), propina legal 10 %, **facturas electrónicas e-CF vía MSeller** (E32 consumo, E31 crédito fiscal, E34 nota de crédito), NCF serie B de respaldo / contingencia, notas de crédito, secuencias con alertas, bitácora fiscal, **Compras y gastos → Formato 606** y reportes 607 / 608 / resumen IT-1 / propina legal | `/fiscal` · `/compras` · Productos (ITBIS) · Clientes (RNC) | Admin (mesero: cuenta con impuestos al cobrar) |
+| **Factura por WhatsApp** | Botón en la factura (con enlace público al comprobante en los avisos de delivery) | Todos |
 | **Guía de uso integrada** para quien nunca usó el sistema (por rol, con buscador, imprimible y descargable). El texto está en [ayuda/GUIA-DE-USO.md](ayuda/GUIA-DE-USO.md): se edita con cualquier editor y se actualiza sola en la app | Menú → **Ayuda** (`/ayuda`) | Todos |
 | **Optimizada para Android e iPhone**: menú con botón ☰, zonas seguras del notch, sin zoom molesto en campos, botones táctiles | Todas las pantallas | Todos |
 | **App instalable (PWA)** para celulares y tablets | Menú del navegador → "Instalar" (requiere HTTPS o localhost) | Todos |
+
+### Cumplimiento fiscal (DGII)
+Cómo está pensado (los detalles de uso están en la guía integrada, parte 6.11):
+
+- **Todo cálculo fiscal ocurre en el servidor** ([services/fiscal/calculo.js](services/fiscal/calculo.js), módulo puro con su prueba): ITBIS por línea, propina legal sobre la base sin ITBIS y total. El navegador solo muestra lo que el servidor calcula (`POST /api/fiscal/cotizar`), y los precios salen de la base de datos (solo el administrador puede cambiarlos).
+- **Modos** (`Fiscal → Configuración`): `no_fiscal` (práctica, es el que trae una instalación nueva: el ticket dice "DOCUMENTO NO FISCAL"), `ecf_pruebas`, `ecf_produccion` y `ncf_b`. Producción exige RNC válido, secuencias reales, credenciales del proveedor y **sin datos de demostración**.
+- **Una factura fiscal no se edita ni se borra** (trigger de PostgreSQL); se corrige con una **nota de crédito**, que guarda montos negativos para que ventas, dashboard y totales por medio de pago resten solos.
+- **Numeración atómica** (`SELECT … FOR UPDATE` sobre la secuencia): sin repetidos ni huecos aunque se facture en paralelo; alertas por agotamiento y vencimiento.
+- **Proveedor de e-CF por adaptador** ([services/fiscal/proveedor/](services/fiscal/proveedor/)): `mseller` (real) y `simulado` (práctica y pruebas e2e). La venta nunca espera a la DGII: se confirma y el envío ocurre después (con reintentos desde el cron de mantenimiento y el botón "Reintentar").
+- Variables: `MSELLER_BASE_URL` (opcional, por defecto `https://ecf.api.mseller.app`). Las credenciales de MSeller se guardan cifradas desde la pantalla Fiscal.
+- ⚠️ **Antes de producción** valida los JSON con `Fiscal → Validar comprobante de prueba` (TesteCF, `?validate=true`), completa la certificación (CerteCF) y confirma con tu contador las fechas obligatorias, el tratamiento de la propina en delivery y para llevar, y la regla de reutilización del e-NCF tras un rechazo.
+- Pruebas: `tests/e2e/12-fiscal-calculo.js` (cálculo), `13-fiscal-ecf.js` (e-CF de punta a punta con el proveedor simulado) y `14-compras-606.js` (compras y 606).
 
 ### Delivery y asistentes de IA (voz y WhatsApp)
 | Función | Dónde | Quién |

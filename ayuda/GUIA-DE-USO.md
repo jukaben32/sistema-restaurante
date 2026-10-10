@@ -72,6 +72,8 @@ El sistema tiene **tres tipos de usuario**. Cada uno solo ve lo que necesita par
 | Reservas | ✅ | ✅ | |
 | Productos | ✅ | | |
 | Inventario | ✅ | | |
+| Compras (606) | ✅ | | |
+| Fiscal (DGII) | ✅ | | |
 | Clientes | ✅ | | |
 | Usuarios | ✅ | | |
 | Ajustes (Configuración) | ✅ | | |
@@ -229,6 +231,25 @@ Si el restaurante usa el **menú digital por QR**, el cliente puede pedir desde 
 6. Si el cliente paga con un billete más grande, escribe el monto que **recibiste**; el sistema calcula y guarda solo lo cobrado (tú das el vuelto).
 7. Toca **Confirmar pago**.
 8. Se abre la **factura** lista para imprimir. La mesa queda **libre** automáticamente.
+
+### 4.8b La cuenta con impuestos: ITBIS, propina y tipo de factura
+Si el administrador activó la **facturación fiscal**, antes del cobro verás una ventana **"Cuenta"** con el desglose:
+- **Subtotal**: lo consumido (sin impuestos).
+- **ITBIS**: el impuesto del 18 % (algunos productos pueden ser exentos).
+- **Propina legal 10 %**: se cobra en el servicio de mesa por ley. Se calcula sobre el consumo, sin contar el ITBIS.
+- **TOTAL**: lo que paga el cliente. **Este es el total que debes cobrar**: el sistema lo calcula solo, tú no haces cuentas.
+
+> En el panel del pedido, el total que ves mientras tomas la orden es **antes de impuestos**. El total final aparece al cobrar.
+
+**Tipo de comprobante** (la ventana te deja elegir):
+- **Factura de consumo**: la normal. Para casi todos los clientes.
+- **Crédito fiscal**: cuando el cliente es una **empresa** y te pide factura "con RNC" para deducir impuestos. Solo se puede elegir si el cliente ya tiene su **RNC o cédula** registrados (los registra el administrador en **Clientes**). Si te piden crédito fiscal y el cliente no tiene RNC guardado, avísale al administrador.
+
+**Si el sistema dice "No hay secuencias vigentes" o "no cubre el total":** la venta NO se pierde; avisa al administrador (parte 6.11) o corrige los pagos para cubrir el total con impuestos.
+
+**Qué verás en la factura impresa:** el número fiscal (**e-NCF**), el **RNC** del restaurante, el desglose de impuestos y, en las facturas electrónicas, un **código QR** y un **código de seguridad**. Si dice **"DOCUMENTO NO FISCAL"**, el sistema está en modo práctica (no es una factura real). Si dice **"en proceso de validación"**, la factura ya es válida y se está confirmando con la DGII (normalmente tarda segundos).
+
+> ✅ Una factura **no se puede borrar ni editar**. Si te equivocas con una cuenta ya cobrada, pide al administrador una **nota de crédito** (parte 6.11).
 
 ### 4.9 Cobrar con Stripe (tarjeta desde el celular del cliente)
 1. En **Forma de pago** elige **Stripe (QR al cliente)**.
@@ -428,7 +449,9 @@ Es la pantalla de **Inicio** (ícono de casa). Sirve para vender **sin mesa**: u
 2. **Producto:** en *Buscar producto por nombre o código…* elige el plato. Escribe la **Cantidad**, elige la **Unidad** (**UND**, **KG** o **LB**) y revisa el **Precio**. Toca el botón **+ (Agregar producto)**.
 3. Repite para cada producto. Abajo ves la tabla con **Producto, Cantidad, Unidad, Precio Unit., Subtotal, Acciones** y el **Total**.
 4. Elige la **forma de pago**: **Efectivo**, **Transferencia**, **Tarjeta**, **QR**, **Stripe (QR al cliente)**, **Cripto — Bitcoin ⚡ (QR al cliente)** o **Pago mixto (varios medios)**.
-5. Toca **Generar factura** (o `Ctrl+G`). Se abre la factura para imprimir.
+5. Toca **Generar factura** (o `Ctrl+G`). Con la facturación fiscal activa verás primero la ventana **Cuenta** (subtotal, ITBIS, propina y total) y podrás elegir *consumo* o *crédito fiscal* (ver 4.8b). Se abre la factura para imprimir.
+
+> 💡 El **precio** lo toma el sistema de la lista de Productos. Solo el administrador puede cambiarlo en esta pantalla.
 
 **Guardar un pedido para después:** toca **Guardar pedido** (o `Ctrl+S`) para dejarlo en pausa, y **Ver pedidos guardados** para retomarlo.
 > ⚠️ Los pedidos guardados se quedan **en ese equipo y navegador**. No los verás desde otro celular.
@@ -466,6 +489,7 @@ Sirve para platos con variantes, por ejemplo un **Corriente** que viene con *Gou
 ### 6.4 Clientes
 Menú → **Clientes**. Es tu lista de personas que compran.
 - **Nuevo cliente**: **Nombre**, **Dirección**, **Teléfono**. Toca **Guardar**.
+- **Documento fiscal (RNC o cédula):** solo hace falta para clientes que piden factura con **crédito fiscal** (empresas). Elige *RNC* o *Cédula*, escribe el número (el sistema avisa si es inválido) y, si es una empresa, su **razón social**.
 - **Buscar cliente…**: filtra por nombre o teléfono.
 - ✏️ **Editar** / 🗑️ **Eliminar**. Si el cliente tiene facturas, **no se puede eliminar** (el sistema avisa).
 - El sistema también **crea clientes solo** cuando alguien pide por llamada o WhatsApp, y los reconoce después por su teléfono.
@@ -494,7 +518,7 @@ Menú → **Usuarios**. Aquí das acceso a tu equipo.
 ### 6.6 Ventas (historial y reportes)
 Menú → **Ventas**.
 - **Filtros:** *Desde*, *Hasta* y *Buscar por cliente o # factura*. Sin fechas muestra todo.
-- La tabla lista **Factura #, Fecha, Cliente, Forma de Pago, Total, Acciones**.
+- La tabla lista **Factura / NCF, Fecha, Cliente, Forma de Pago, Total, Acciones**. Las notas de crédito aparecen marcadas y **restan** del total. Puedes buscar por el número fiscal (NCF).
 - **Ver detalles** (ojo): cliente, factura, productos, cantidades y pagos.
 - **Reimprimir factura** (impresora).
 - Arriba verás **totales por medio de pago** (efectivo, transferencia, tarjeta, QR) y **gráficos**: productos más vendidos, días con más movimiento y horas pico.
@@ -711,6 +735,67 @@ Abajo de todas las pantallas del sistema aparece un **pie de página** con tus *
 3. Revisa en Delivery que no queden pedidos sin cerrar.
 4. Cierra sesión.
 
+### 6.11 Fiscal (DGII): facturas electrónicas, ITBIS, propina y reportes
+Esta sección es para cumplir las leyes dominicanas de facturación. Menú → **Fiscal**. **Confirma siempre tus decisiones con tu contador**: el sistema ayuda, pero la responsabilidad fiscal es del negocio.
+
+#### Los modos del sistema
+- **Práctica (no fiscal)**: es como viene al instalar. Las ventas **no llevan impuestos ni número fiscal** y el ticket dice *"DOCUMENTO NO FISCAL"*. Sirve para aprender; **no lo uses para vender de verdad**. Verás un aviso amarillo en el menú mientras esté así.
+- **Pruebas e-CF**: el sistema numera y envía las facturas a un ambiente de pruebas (sin validez fiscal). Es el ensayo general antes de abrir.
+- **Producción e-CF**: facturas electrónicas **reales** enviadas a la DGII. Solo se puede activar cuando el *checklist* "¿Listo para facturar?" está todo en verde, y te pide escribir *PRODUCCION* para confirmar.
+- **Serie B manual**: para operar con comprobantes (NCF serie B) autorizados por la DGII, como respaldo o si todavía no eres emisor electrónico.
+
+#### Paso a paso para dejarlo listo (antes de abrir)
+1. **Datos del restaurante** (Fiscal → *Configuración*): **RNC**, **razón social** (exactamente como está en la DGII), **dirección fiscal**, municipio y provincia. El sistema valida el RNC.
+2. **Impuestos:** decide si los **precios del menú ya incluyen el ITBIS** o si se suma aparte (lo normal es sumarlo: un plato de RD$1,000 cuesta 1,180 con ITBIS). Esto cambia lo que paga el cliente, así que decídelo con tu contador y avisa a tu equipo.
+3. **Propina legal:** déjala activa (10 %). En mesa siempre se cobra. Para **delivery**, **para llevar** y **venta rápida** tú decides si también se cobra.
+4. **ITBIS de cada producto:** en **Productos → editar** hay un campo **"ITBIS de este producto"**: 18 % (casi todo), 16 %, 0 % o **Exento**.
+5. **Proveedor de facturas electrónicas (MSeller):** crea tu cuenta en MSeller, carga allí tu **certificado digital** (.p12, de una entidad autorizada) y copia aquí tu **correo, contraseña y API key**. Usa **Probar conexión** y luego **Validar comprobante de prueba** (verifica el formato sin gastar números).
+6. **Certificación y secuencias en la DGII (Oficina Virtual):** completa la certificación como emisor electrónico y **solicita tus secuencias** de e-NCF (E32 consumo, E31 crédito fiscal, E34 nota de crédito). Luego anótalas en Fiscal → *Secuencias* exactamente como te las autorizaron (**tipo, desde, hasta y fecha de vencimiento**).
+   - Para practicar sin la DGII usa **Cargar secuencias de práctica**.
+7. **Pasar a producción** cuando el checklist esté verde.
+
+> 📅 **Fechas límite:** según fuentes consultadas, la factura electrónica es obligatoria desde el **1 de noviembre de 2026** para contribuyentes medianos y grandes locales, y desde el **15 de noviembre de 2026** para pequeños y micro. Verifica tu fecha con tu contador y en dgii.gov.do.
+
+#### Secuencias (los números autorizados)
+En Fiscal → *Secuencias* ves cuántos números **quedan**, cuándo **vencen** y alertas ("se está acabando", "vence en 20 días"). **Pide una secuencia nueva antes de que se acabe**: sin números disponibles no se puede facturar. Los rangos no se pueden cruzar y se desactivan, no se borran.
+
+#### Comprobantes y estados
+En Fiscal → *Comprobantes* ves cada factura y su estado:
+- **Aceptado**: la DGII la validó.
+- **Pendiente de envío / En proceso**: la venta ya se hizo; el sistema reintenta solo. Si algo falla (internet, MSeller), queda pendiente y se vuelve a intentar cada pocos minutos. Puedes tocar **Reintentar envío**.
+- **Rechazado**: la DGII o MSeller la rechazó (se ve el motivo). Una factura rechazada **no tiene validez**: revisa el error y emite una factura correcta.
+- **Contingencia (serie B)**: ver abajo.
+Abre una factura con **Abrir** para ver su historial, imprimirla o ver exactamente lo que se envió.
+
+#### Anular una factura o devolver platos: nota de crédito
+Una factura **nunca se borra ni se edita** (el sistema lo impide a propósito). Para corregir: Fiscal → *Comprobantes* → **Abrir** la factura:
+- **Anular toda la factura**: emite una **nota de crédito (E34)** por todo lo que no se haya devuelto antes.
+- **Devolver lo marcado**: escribe cuántas unidades devuelves de cada plato y emite una nota parcial (el ITBIS y la propina se ajustan proporcionalmente).
+- El **motivo es obligatorio**. Puedes marcar *devolver los insumos al inventario* si el plato no se preparó.
+- La nota **resta** de tus ventas, de los totales por medio de pago y del dashboard. Solo el **administrador** puede hacerlo.
+
+#### Contingencia: cuando no se pueden emitir facturas electrónicas
+Si MSeller o la DGII no responden por mucho tiempo, activa **Contingencia** (Fiscal → *Configuración*). Mientras esté activa, las ventas salen con **NCF de la serie B** (necesitas tener cargadas las secuencias B01 y B02). Debes **notificarlo en la Oficina Virtual** (hasta 15 días) y luego **regularizar** con tu contador. Al terminarla, el sistema vuelve a emitir e-CF solo. Para fallas de internet cortas no hace falta: las facturas quedan pendientes y se envían al volver la conexión.
+
+#### Compras y gastos → Formato 606
+Menú → **Compras**. Aquí anotas cada **factura que te dan tus proveedores** (carne, bebidas, luz, alquiler…):
+1. Primero registra al **proveedor** con su **RNC o cédula** (el sistema valida el número).
+2. **Nueva compra:** NCF de la factura, fecha, qué compraste, montos (sin ITBIS), **ITBIS facturado**, forma de pago. Si la compra incluye mercancía, en el mismo paso puedes registrar la **entrada al inventario**.
+3. Al terminar el mes, entra a **Compras** y descarga el **606 (TXT)** para subirlo a la DGII, o el **Excel** para tu contador. Se envía antes del **día 15** del mes siguiente.
+
+#### Reportes (Fiscal → Reportes)
+- **Resumen del mes:** ventas por tasa de ITBIS, ITBIS cobrado, ITBIS de tus compras y una estimación de lo que se paga en el IT-1 (guía para tu contador).
+- **607 (ventas)** y **608 (comprobantes anulados de la serie B)**, en TXT o Excel. Con facturas electrónicas la DGII ya recibe tus ventas, así que el 607 sirve de respaldo; es obligatorio si usas la serie B.
+- **Propina legal:** cuánto se recaudó en un período, para repartirla al personal como manda la ley.
+
+#### Cierre del mes (rutina sugerida)
+1. Revisa Fiscal → *Comprobantes* → filtro **Con problemas** (que no quede nada pendiente o rechazado).
+2. Registra todas las **compras** del mes.
+3. Descarga el **606**, el **607** y el **resumen**; envíaselos a tu contador.
+4. Mira que las **secuencias** tengan números y fecha suficientes.
+
+> ⚠️ Antes de abrir al público: **quita los datos de demostración** (6.6b), cambia la contraseña del administrador y pasa del modo práctica al modo de pruebas/producción. Con datos de demostración cargados el sistema **no te deja** activar la producción.
+
 ---
 
 ## 7. Para los CLIENTES: qué ve quien te visita o te escribe {roles=}
@@ -797,6 +882,18 @@ Si el restaurante lo tiene activado, el cliente puede pagar con **Bitcoin o Ligh
 | **Consumidor final** | Cliente genérico para ventas sin datos. |
 | **Dashboard** | El tablero de inicio con los números del día. |
 | **Delivery** | Entrega a domicilio. |
+| **ITBIS** | El impuesto sobre las ventas (18 %). Aparece separado en la factura. |
+| **Propina legal** | El 10 % que por ley se cobra en el servicio de restaurante. Se calcula sobre el consumo sin ITBIS y es para el personal. |
+| **RNC** | Registro Nacional del Contribuyente: el número de 9 dígitos de una empresa. Las personas usan su cédula (11 dígitos). |
+| **DGII** | La Dirección General de Impuestos Internos, que recibe y controla las facturas. |
+| **NCF** | Número de Comprobante Fiscal: el número oficial de una factura en papel o serie B (por ejemplo B0200000015). |
+| **e-NCF / e-CF** | El número y el comprobante de la **factura electrónica** (por ejemplo E320000000001). La DGII los valida. |
+| **E32 / E31 / E34** | Tipos de factura electrónica: **E32** consumo (la normal), **E31** crédito fiscal (para empresas con RNC) y **E34** nota de crédito. |
+| **Nota de crédito** | El documento que corrige o anula una factura ya emitida. La factura original no se toca. |
+| **Secuencia** | El rango de números que la DGII te autoriza usar, con una fecha de vencimiento. |
+| **Contingencia** | Modo de emergencia: se factura con NCF serie B mientras no se pueden emitir facturas electrónicas. |
+| **Formato 606 / 607 / 608** | Reportes mensuales para la DGII: **606** compras, **607** ventas, **608** comprobantes anulados. |
+| **MSeller** | El servicio que firma tus facturas electrónicas y las envía a la DGII. |
 | **DEL-N / LLEVAR-N** | El código de un pedido de delivery o para llevar (por ejemplo DEL-12). |
 | **Enlace de pago** | Dirección que el cliente abre para pagar con su tarjeta. |
 | **Factura** | El comprobante de lo cobrado. |

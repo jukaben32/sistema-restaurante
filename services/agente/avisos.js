@@ -91,10 +91,18 @@ async function pedido(pedidoId, evento) {
                 `SELECT pr.nombre, d.cantidad, d.subtotal FROM detalle_factura d JOIN productos pr ON pr.id = d.producto_id WHERE d.factura_id = ? ORDER BY d.id`,
                 [p.factura_id]
             );
+            const [[fac]] = await db.query('SELECT ncf, token_publico, itbis_total, propina, total, fiscal_estado FROM facturas WHERE id = ?', [p.factura_id]);
             const lineas = det.map((d) => `• ${Number(d.cantidad)} ${d.nombre} — ${formatoMoneda(d.subtotal, p.cfg.moneda)}`).join('\n');
+            const fiscal = fac && fac.fiscal_estado !== 'no_fiscal';
+            const impuestos = fiscal ? `\nITBIS: ${formatoMoneda(fac.itbis_total, p.cfg.moneda)}${Number(fac.propina) ? ` · Propina legal: ${formatoMoneda(fac.propina, p.cfg.moneda)}` : ''}` : '';
+            const base = String(process.env.APP_URL || '').replace(/\/$/, '');
+            const enlace = fiscal && fac.token_publico && base ? `${base}/f/${fac.token_publico}` : '';
+            const numEs = fiscal && fac.ncf ? `Comprobante ${fac.ncf}` : `Factura #${p.factura_id}`;
+            const numEn = fiscal && fac.ncf ? `Receipt ${fac.ncf}` : `Invoice #${p.factura_id}`;
+            const totalFac = formatoMoneda(fac ? fac.total : p.total, p.cfg.moneda);
             return enviar(p.cliente_telefono, {
-                es: `Gracias por tu compra en ${nombre} 🙌\nFactura #${p.factura_id}\n${lineas}\n*Total: ${money}*`,
-                en: `Thank you for your order at ${nombre} 🙌\nInvoice #${p.factura_id}\n${lineas}\n*Total: ${money}*`
+                es: `Gracias por tu compra en ${nombre} 🙌\n${numEs}\n${lineas}${impuestos}\n*Total: ${totalFac}*${enlace ? `\nTu comprobante: ${enlace}` : ''}`,
+                en: `Thank you for your order at ${nombre} 🙌\n${numEn}\n${lineas}${impuestos}\n*Total: ${totalFac}*${enlace ? `\nYour receipt: ${enlace}` : ''}`
             });
         }
     } catch (e) {

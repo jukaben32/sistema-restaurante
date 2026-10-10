@@ -3,11 +3,11 @@
 (function () {
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const money = (n) => `$${Math.round(Number(n || 0)).toLocaleString('es-CO')}`;
+  const money = (n) => `RD$\u00a0${Math.round(Number(n || 0)).toLocaleString('en-US')}`;
   const compact = (n) => {
     const v = Number(n || 0);
-    if (v >= 1e6) return `$${(v / 1e6).toLocaleString('es', { maximumFractionDigits: 1 })}M`;
-    if (v >= 1e4) return `$${(v / 1e3).toLocaleString('es', { maximumFractionDigits: 0 })}K`;
+    if (v >= 1e6) return `RD$\u00a0${(v / 1e6).toLocaleString('en-US', { maximumFractionDigits: 1 })}M`;
+    if (v >= 1e4) return `RD$\u00a0${(v / 1e3).toLocaleString('en-US', { maximumFractionDigits: 0 })}K`;
     return money(v);
   };
   const diaCorto = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString('es', { weekday: 'short' }).replace('.', '');
@@ -73,7 +73,7 @@
   function render(d) {
     $('kVentas').textContent = money(d.hoy.ventas);
     delta($('kVentasDelta'), d.hoy.ventas, d.ayer.ventas_a_esta_hora, 'vs. ayer a esta hora');
-    $('kFacturas').textContent = d.hoy.facturas.toLocaleString('es');
+    $('kFacturas').textContent = d.hoy.facturas.toLocaleString('en-US');
     delta($('kFacturasDelta'), d.hoy.facturas, d.ayer.facturas, 'vs. ayer');
     $('kTicket').textContent = money(d.hoy.ticket);
     delta($('kTicketDelta'), d.hoy.ticket, d.ayer.ticket, 'vs. ayer');
@@ -85,7 +85,7 @@
     const maxTop = Math.max(1, ...d.top.map((t) => t.ingresos));
     $('top').innerHTML = d.top.length ? d.top.map((t) => `
       <li><div class="d-flex justify-content-between gap-2"><span class="text-truncate">${esc(t.nombre)}</span>
-        <span class="num small"><b>${money(t.ingresos)}</b> <span class="text-muted">· ${Number(t.cantidad).toLocaleString('es')} und</span></span></div>
+        <span class="num small"><b>${money(t.ingresos)}</b> <span class="text-muted">· ${Number(t.cantidad).toLocaleString('en-US')} und</span></span></div>
         <div class="track"><div class="fill" style="width:${(t.ingresos / maxTop) * 100}%"></div></div></li>`).join('')
       : '<li class="rm-empty border-0">Aún no hay ventas esta semana</li>';
 
@@ -115,7 +115,7 @@
 
     $('stock').innerHTML = d.stock_bajo.length ? d.stock_bajo.map((s) => `
       <div class="mini"><span class="text-truncate">${esc(s.nombre)}</span>
-      <span class="rm-chip danger"><i class="bi bi-exclamation-triangle"></i>${Number(s.stock).toLocaleString('es', { maximumFractionDigits: 2 })} ${esc(s.unidad)}</span></div>`).join('')
+      <span class="rm-chip danger"><i class="bi bi-exclamation-triangle"></i>${Number(s.stock).toLocaleString('en-US', { maximumFractionDigits: 2 })} ${esc(s.unidad)}</span></div>`).join('')
       : '<div class="rm-empty py-3"><i class="bi bi-check2-circle"></i>Todo el inventario en orden</div>';
 
     const dl = d.delivery || {};

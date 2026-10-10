@@ -120,7 +120,7 @@
                     <div class="col-md-3">
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-search"></i></span>
-                            <input type="text" id="buscarVentas" class="form-control" placeholder="Buscar por cliente o # factura">
+                            <input type="text" id="buscarVentas" class="form-control" placeholder="Buscar por cliente, # factura o NCF">
                         </div>
                     </div>
                     <div class="col-md-3 d-flex justify-content-end gap-2">
@@ -134,7 +134,7 @@
                     <table class="table table-hover">
                         <thead class="table-light sticky-top">
                             <tr>
-                                <th>Factura #</th>
+                                <th>Factura / NCF</th>
                                 <th>Fecha</th>
                                 <th>Cliente</th>
                                 <th>Forma de Pago</th>
@@ -145,11 +145,11 @@
                         <tbody id="ventasTabla">
                             <% ventas.forEach(function(venta) { %>
                                 <tr>
-                                    <td><%= venta.id %></td>
-                                    <td><%= new Date(venta.fecha).toLocaleString() %></td>
+                                    <td><%= venta.ncf ? venta.ncf : venta.id %><% if (venta.factura_origen_id) { %> <span class="badge text-bg-warning">nota de crédito</span><% } else if (venta.fiscal_estado === 'rechazado') { %> <span class="badge text-bg-danger">rechazada</span><% } else if (venta.fiscal_estado === 'pendiente' || venta.fiscal_estado === 'enviado') { %> <span class="badge text-bg-info">enviando</span><% } %></td>
+                                    <td><%= new Date(venta.fecha).toLocaleString('es-DO', { timeZone: 'America/Santo_Domingo' }) %></td>
                                     <td><%= venta.cliente_nombre %></td>
                                     <td><%= venta.forma_pago.charAt(0).toUpperCase() + venta.forma_pago.slice(1) %></td>
-                                    <td class="text-end" data-total="<%= venta.total %>">$<%= Number(venta.total).toFixed(2) %></td>
+                                    <td class="text-end" data-total="<%= venta.total %>">RD$&nbsp;<%= Number(venta.total).toFixed(2) %></td>
                                     <td class="text-center">
                                         <button class="btn btn-sm btn-outline-info me-1 btn-detalles" 
                                                 data-factura-id="<%= venta.id %>"
@@ -396,7 +396,7 @@
                                         ${data.pagos.map(p => `
                                             <li>
                                                 <strong>${(p.metodo||'').charAt(0).toUpperCase() + (p.metodo||'').slice(1)}:</strong>
-                                                $${Number(p.monto||0).toFixed(2)}
+                                                RD$\u00a0${Number(p.monto||0).toFixed(2)}
                                                 ${p.referencia ? `<span class="text-muted">(${p.referencia})</span>` : ''}
                                             </li>
                                         `).join('')}
@@ -423,13 +423,13 @@
                                 <td>${producto.nombre}</td>
                                 <td class="text-end">${cantidad.toFixed(2)}</td>
                                 <td>${producto.unidad || 'N/A'}</td>
-                                <td class="text-end">$${precio.toFixed(2)}</td>
-                                <td class="text-end">$${subtotal.toFixed(2)}</td>
+                                <td class="text-end">RD$\u00a0${precio.toFixed(2)}</td>
+                                <td class="text-end">RD$\u00a0${subtotal.toFixed(2)}</td>
                             </tr>
                         `);
                     });
 
-                    $('#detallesTotal').text(`$${totalGeneral.toFixed(2)}`);
+                    $('#detallesTotal').text(`RD$\u00a0${totalGeneral.toFixed(2)}`);
                     detallesModal.show();
                 },
                 error: function() {
@@ -498,12 +498,12 @@
             const tcr = Number(t.cripto || 0);
             const tge = Number(t.general || (tef + ttr + tta + tqr + tcr));
 
-            document.getElementById('totalEfectivo').textContent = `$${tef.toFixed(2)}`;
-            document.getElementById('totalTransferencia').textContent = `$${ttr.toFixed(2)}`;
-            document.getElementById('totalTarjeta').textContent = `$${tta.toFixed(2)}`;
-            document.getElementById('totalQR').textContent = `$${tqr.toFixed(2)}`;
-            document.getElementById('totalCripto').textContent = `$${tcr.toFixed(2)}`;
-            document.getElementById('totalGeneral').textContent = `$${tge.toFixed(2)}`;
+            document.getElementById('totalEfectivo').textContent = `RD$\u00a0${tef.toFixed(2)}`;
+            document.getElementById('totalTransferencia').textContent = `RD$\u00a0${ttr.toFixed(2)}`;
+            document.getElementById('totalTarjeta').textContent = `RD$\u00a0${tta.toFixed(2)}`;
+            document.getElementById('totalQR').textContent = `RD$\u00a0${tqr.toFixed(2)}`;
+            document.getElementById('totalCripto').textContent = `RD$\u00a0${tcr.toFixed(2)}`;
+            document.getElementById('totalGeneral').textContent = `RD$\u00a0${tge.toFixed(2)}`;
         }
 
         // Aplicar al cargar la página (ya incluye filtros por fecha/búsqueda)
@@ -516,12 +516,12 @@
 
             // --- Helpers ---
             function fmt(n) {
-                return '$' + Number(n || 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                return 'RD$\u00a0' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
             }
 
             // --- KPIs ---
             const kpis = analytics.kpis || {};
-            document.getElementById('kpiFacturas').textContent = Number(kpis.num_facturas || 0).toLocaleString('es-CO');
+            document.getElementById('kpiFacturas').textContent = Number(kpis.num_facturas || 0).toLocaleString('en-US');
             document.getElementById('kpiTicket').textContent   = fmt(kpis.ticket_promedio);
             document.getElementById('kpiMax').textContent      = fmt(kpis.venta_maxima);
 

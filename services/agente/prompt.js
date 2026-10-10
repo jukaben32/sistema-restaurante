@@ -5,6 +5,7 @@
 // Relacionado con: scripts/vapi-sync.js, services/agente/texto.js, services/agente/ejecutor.js
 const db = require('../../db');
 const delivery = require('../delivery');
+const fiscalConfig = require('../fiscal/config');
 
 const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 const ORDEN_DIAS = [1, 2, 3, 4, 5, 6, 0];
@@ -48,6 +49,10 @@ async function construirPrompt(canal = 'texto') {
     const esVoz = canal === 'voz';
     const tz = process.env.DB_TIMEZONE || 'America/Santo_Domingo';
     const moneda = cfg.moneda;
+    const fiscal = await fiscalConfig.obtenerCache();
+    const impuestosTxt = fiscal.activo
+        ? `- Los precios del menú ${fiscal.preciosIncluyenItbis ? 'YA incluyen el ITBIS (18 %)' : 'NO incluyen el ITBIS (18 %), que se suma al total'}${fiscal.propinaActiva ? ` y el servicio de mesa lleva ${fiscal.propinaTasa} % de propina legal${fiscal.propinaEnDelivery ? ' (también en delivery)' : ' (no se cobra en delivery ni para llevar)'}` : ''}. El total que devuelve la herramienta al cotizar YA incluye todo: di siempre ESE total y nunca calcules impuestos tú.`
+        : '- Di siempre el total que devuelve la herramienta al cotizar; no calcules tú ningún impuesto.';
 
     // Fecha y hora: Liquid en voz (lo resuelve Vapi en cada llamada); calculada ahora en texto
     const ahora = esVoz
@@ -85,6 +90,7 @@ Tu objetivo es resolver la consulta: informar, tomar el pedido o dejar la reserv
 - Si el cliente cambia de idioma, cambia tú también al instante. Si no estás seguro, empieza en español.
 - Los nombres de los platos se dicen tal como están en el menú.
 - Los precios son en ${String(moneda).toLowerCase() === 'dop' ? 'pesos dominicanos (RD$)' : String(moneda).toUpperCase()}.
+${impuestosTxt}
 
 ${estilo}
 

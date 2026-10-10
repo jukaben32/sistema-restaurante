@@ -108,6 +108,17 @@ function baseUrl(req, cfgUrl) {
     return String(process.env.APP_URL || cfgUrl || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
 }
 
+/**
+ * Cotización pública del carrito (subtotal, envío, ITBIS, propina legal y total) con los precios de la base de datos.
+ * Relacionado con: public/js/pedir.js (resumen del carrito), services/delivery.js (cotizar)
+ */
+async function cotizarCarrito(body, req) {
+    if (!limitePorIp(`cot:${req.ip || 'x'}`, 240, 10 * 60 * 1000)) throw Object.assign(new ErrorPublico('Demasiadas consultas seguidas. Espera un momento.'), { status: 429 });
+    const tipo = body && body.tipo === 'para_llevar' ? 'para_llevar' : 'delivery';
+    const cot = await delivery.cotizar(db, { items: body && body.items, zonaId: body && body.zona_id, tipo, soloMenu: true });
+    return { subtotal: cot.subtotal, envio: cot.envio, itbis: cot.itbis, propina: cot.propina, propina_tasa: cot.fiscal.propina_tasa, total: cot.total, fiscal: cot.fiscal.fiscal };
+}
+
 async function crearPedido(body, req) {
     const cfg = await configApp();
     if (!cfg.activa) throw new ErrorPublico('Por ahora no estamos recibiendo pedidos por la app. Llámanos o escríbenos por WhatsApp.');
@@ -315,4 +326,4 @@ async function limpiarSinPago(minutos = MINUTOS_PARA_PAGAR) {
     return n;
 }
 
-module.exports = { catalogo, crearPedido, seguimiento, cancelarPorCliente, limpiarSinPago, configApp, baseUrl, formasDePago, MINUTOS_PARA_PAGAR };
+module.exports = { catalogo, cotizarCarrito, crearPedido, seguimiento, cancelarPorCliente, limpiarSinPago, configApp, baseUrl, formasDePago, MINUTOS_PARA_PAGAR };

@@ -142,11 +142,32 @@
       <div class="total"><span>Total</span><span class="num">${money(sub + envio)}</span></div>
       ${falta ? `<div class="text-danger small mt-1" style="display:block">El pedido mínimo para delivery es ${money(cat.delivery.pedidoMinimo)} (sin contar el envío). Agrega ${money(cat.delivery.pedidoMinimo - sub)} más o elige "Para recoger".</div>` : ''}`;
     $('btnEnviar').disabled = !!falta;
+    pedirCotizacion(sub, envio, esDelivery, falta);
     const online = formaPago === 'tarjeta' || formaPago === 'cripto';
     $('btnEnviarTxt').textContent = online ? 'Enviar y pagar ahora' : 'Enviar pedido';
     $('notaEnvio').textContent = online
       ? 'Te llevamos a la página de pago segura. Tu pedido se confirma cuando se acredite el pago.'
       : 'Tu pedido llega al restaurante y lo confirmamos enseguida.';
+  }
+
+  // El total con ITBIS y propina lo calcula el servidor (con los mismos precios de la base de datos)
+  let cotizacionN = 0;
+  async function pedirCotizacion(sub, envio, esDelivery, falta) {
+    const n = ++cotizacionN;
+    if (esDelivery && !zonaActual()) return;
+    try {
+      const r = await fetch('/api/pedir/cotizar', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tipo: tipoActual(), zona_id: zonaActual() ? zonaActual().id : null, items: [...carrito.entries()].map(([id, c]) => ({ producto_id: id, cantidad: c })) }) });
+      const q = await r.json();
+      if (n !== cotizacionN || !r.ok || !q.fiscal) return; // si la facturación fiscal no está activa, el total del carrito ya es el final
+      $('resumen').innerHTML = `<div><span>Subtotal</span><span class="num">${money(q.subtotal)}</span></div>
+        ${esDelivery ? `<div><span>Envío${zonaActual() ? ` · ${esc(zonaActual().nombre)}` : ''}</span><span class="num">${money(q.envio)}</span></div>` : ''}
+        <div><span>ITBIS</span><span class="num">${money(q.itbis)}</span></div>
+        ${q.propina > 0 ? `<div><span>Propina legal ${q.propina_tasa}%</span><span class="num">${money(q.propina)}</span></div>` : ''}
+        <div class="total"><span>Total</span><span class="num">${money(q.total)}</span></div>
+        ${falta ? `<div class="text-danger small mt-1" style="display:block">El pedido mínimo para delivery es ${money(cat.delivery.pedidoMinimo)} (sin contar el envío). Agrega ${money(cat.delivery.pedidoMinimo - sub)} más o elige "Para recoger".</div>` : ''}`;
+      $('barTotal').textContent = money(q.total);
+    } catch (_) { /* se queda el total sin impuestos */ }
   }
 
   function renderFormas() {

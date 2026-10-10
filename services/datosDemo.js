@@ -231,6 +231,9 @@ async function estado(db) {
 async function cargar(db, log = () => {}) {
     await asegurarTabla(db);
     if ((await estado(db)).cargados) throw Object.assign(new Error('Ya hay datos de demostración cargados. Quítalos primero.'), { publico: true });
+    // Las ventas de ejemplo no son comprobantes fiscales: no se mezclan con una facturación real
+    const [[fz]] = await db.query(`SELECT fiscal_modo FROM configuracion_impresion ORDER BY id LIMIT 1`).then((r) => (r[0].length ? r : [[{ fiscal_modo: 'no_fiscal' }]]));
+    if (fz.fiscal_modo === 'ecf_produccion') throw Object.assign(new Error('No se pueden cargar datos de demostración con la facturación electrónica en PRODUCCIÓN.'), { publico: true });
 
     const rnd = prng(20261108);
     const pick = (arr) => arr[Math.floor(rnd() * arr.length)];

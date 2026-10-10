@@ -1,0 +1,110 @@
+<%#
+  Representación impresa del comprobante (ticket, pantalla y enlace público /f/:token).
+  Variables: factura, detalles, pagos, config (fila de configuracion_impresion), qr (imagen del QR en data URL o null), vence (vencimiento de la secuencia o null)
+  Muestra: emisor con RNC, tipo y número (e-NCF / NCF), comprador, ITBIS por tasa, propina legal, QR y código de seguridad (e-CF) y la leyenda según el estado.
+  Relacionado con: services/fiscal/formato.js, views/factura.ejs, views/factura_publica.ejs
+%>
+<%
+  const F = fmt;
+  const fiscal = factura.fiscal_estado !== 'no_fiscal';
+  const A = (k) => Math.abs(Number(factura[k] || 0));
+  const base = A('subtotal_gravado_18') + A('subtotal_gravado_16') + A('subtotal_gravado_0') + A('subtotal_exento');
+  const ley = F.leyenda(factura);
+  const elec = F.esElectronico(factura);
+  const nota = F.esNota(factura);
+  const docNombre = { rnc: 'RNC', cedula: 'Cédula', pasaporte: 'Pasaporte' }[factura.comprador_tipo_doc] || 'Documento';
+%>
+<% if (config.logo_src) { %>
+    <img src="<%= config.logo_src %>" alt="Logo" class="logo mb-3">
+<% } %>
+
+<div class="text-center mb-3">
+    <h2 style="margin: 0;"><%= config.razon_social || config.nombre_negocio %></h2>
+    <% if (config.razon_social && config.nombre_negocio && config.razon_social !== config.nombre_negocio) { %>
+        <div class="small"><%= config.nombre_negocio %></div>
+    <% } %>
+    <% if (config.rnc_emisor) { %><div class="small"><strong>RNC: <%= config.rnc_emisor %></strong></div><% } %>
+    <% if (config.direccion_fiscal || config.direccion) { %><div class="small"><%= config.direccion_fiscal || config.direccion %></div><% } %>
+    <% if (config.telefono) { %><div class="small">Tel: <%= config.telefono %></div><% } %>
+</div>
+
+<div class="divider"></div>
+
+<div class="text-center mb-3">
+    <div style="font-weight:bold;"><%= F.titulo(factura) %></div>
+    <% if (factura.ncf) { %>
+        <div><%= elec ? 'e-NCF' : 'NCF' %>: <strong><%= factura.ncf %></strong></div>
+        <% if (vence && factura.tipo_comprobante !== 'E32') { %><div class="small">Vence la secuencia: <%= new Date(vence).toLocaleDateString('es-DO', { timeZone: 'UTC' }) %></div><% } %>
+    <% } else { %>
+        <div>Número interno: #<%= factura.id %></div>
+    <% } %>
+    <% if (factura.ncf_modificado) { %><div class="small">Modifica el NCF: <%= factura.ncf_modificado %></div><% } %>
+    <% if (nota && factura.motivo_nota) { %><div class="small">Motivo: <%= factura.motivo_nota %></div><% } %>
+</div>
+
+<div class="mb-3">
+    <div>Fecha: <%= new Date(factura.fecha).toLocaleString('es-DO', { timeZone: 'America/Santo_Domingo' }) %></div>
+    <div><strong>Cliente:</strong> <%= factura.comprador_nombre || factura.cliente_nombre || (typeof cliente !== 'undefined' && cliente ? cliente.nombre : '') || '-' %></div>
+    <% if (factura.comprador_documento) { %><div><strong><%= docNombre %>:</strong> <%= factura.comprador_documento %></div><% } %>
+    <% if (typeof factura.direccion !== 'undefined' && factura.direccion) { %><div><strong>Dirección:</strong> <%= factura.direccion %></div><% } %>
+    <% if (typeof factura.telefono !== 'undefined' && factura.telefono) { %><div><strong>Teléfono:</strong> <%= factura.telefono %></div><% } %>
+</div>
+
+<div class="divider"></div>
+
+<div class="productos-lista">
+    <% detalles.forEach(function(item) { %>
+        <div class="producto-item">
+            <div class="producto-nombre"><%= item.producto_nombre %><% if (fiscal && item.itbis_tasa) { %> <span class="small">(<%= item.itbis_tasa === 'E' ? 'Exento' : 'ITBIS ' + item.itbis_tasa + '%' %>)</span><% } %></div>
+            <div class="producto-detalles">
+                <div class="producto-cantidad"><%= F.cant(item.cantidad) %><%= item.unidad_medida %></div>
+                <div class="producto-precio"><%= F.rd(item.precio_unitario) %></div>
+                <div class="producto-total"><%= F.rd(Math.abs(Number(item.subtotal))) %></div>
+            </div>
+        </div>
+    <% }); %>
+
+    <div class="totales">
+        <% if (fiscal) { %>
+            <div class="fila"><span>Subtotal</span><span><%= F.rd(base) %></span></div>
+            <% if (A('subtotal_gravado_18') > 0) { %><div class="fila small"><span>Gravado 18%</span><span><%= F.rd(A('subtotal_gravado_18')) %></span></div><% } %>
+            <% if (A('subtotal_gravado_16') > 0) { %><div class="fila small"><span>Gravado 16%</span><span><%= F.rd(A('subtotal_gravado_16')) %></span></div><% } %>
+            <% if (A('subtotal_gravado_0') > 0) { %><div class="fila small"><span>Gravado 0%</span><span><%= F.rd(A('subtotal_gravado_0')) %></span></div><% } %>
+            <% if (A('subtotal_exento') > 0) { %><div class="fila small"><span>Exento</span><span><%= F.rd(A('subtotal_exento')) %></span></div><% } %>
+            <div class="fila"><span>ITBIS</span><span><%= F.rd(A('itbis_total')) %></span></div>
+            <% if (A('propina') > 0) { %><div class="fila"><span>Propina legal 10%</span><span><%= F.rd(A('propina')) %></span></div><% } %>
+        <% } %>
+        <div class="total-final"><%= nota ? 'TOTAL DEVUELTO' : 'TOTAL' %>: <%= F.rd(factura.total) %></div>
+    </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="text-center small">
+    <% if (typeof pagos !== 'undefined' && pagos && pagos.length > 0) { %>
+        <div class="mb-2"><strong><%= nota ? 'Reembolso:' : 'Pagos:' %></strong></div>
+        <% pagos.forEach(function(p) { %>
+            <div>
+                <strong><%= (p.metodo || '').charAt(0).toUpperCase() + (p.metodo || '').slice(1) %>:</strong>
+                <%= F.rd(Math.abs(Number(p.monto || 0))) %>
+                <% if (p.referencia) { %><span class="small">(<%= p.referencia %>)</span><% } %>
+            </div>
+        <% }); %>
+    <% } else { %>
+        <div><strong>Forma de Pago:</strong> <%= factura.forma_pago.charAt(0).toUpperCase() + factura.forma_pago.slice(1) %></div>
+    <% } %>
+
+    <% if (elec && factura.codigo_seguridad) { %>
+        <div class="divider"></div>
+        <% if (qr) { %><div class="mt-2"><img src="<%= qr %>" alt="Código QR de verificación" style="max-width: 140px;"></div><% } %>
+        <div>Código de seguridad: <strong><%= factura.codigo_seguridad %></strong></div>
+        <% if (factura.fecha_firma) { %><div>Fecha de firma digital: <%= String(factura.fecha_firma).replace('T', ' ').slice(0, 19) %></div><% } %>
+    <% } %>
+
+    <% if (ley) { %><div class="leyenda <%= factura.fiscal_estado === 'rechazado' ? 'leyenda-mala' : '' %>"><%= ley %></div><% } %>
+
+    <% if (config.qr_src && !nota) { %>
+        <div class="mt-3 mb-3"><img src="<%= config.qr_src %>" alt="QR para transferencia" style="max-width: 150px;"></div>
+    <% } %>
+    <div class="mt-2"><%= config.pie_pagina || '¡Gracias por su compra!' %></div>
+</div>

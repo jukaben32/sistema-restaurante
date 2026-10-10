@@ -5,9 +5,10 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { exec } = require('child_process');
-const stripeService = require('../services/stripe');
-const criptoService = require('../services/cripto');
-const inventarioService = require('../services/inventario');
+const facturacionService = require('../services/facturacion');
+const emision = require('../services/fiscal/emision');
+const formato = require('../services/fiscal/formato');
+const QRCode = require('qrcode');
 
 // Validar rutas de retorno (evitar open-redirect / URLs externas)
 // Se usa para que el botón "Volver" de la impresión regrese a Mesas cuando aplique.
@@ -120,162 +121,42 @@ async function imprimirTextoServidor(texto, impresoraNombre, copias, anchoPapelM
     }
 }
 
+// Texto del ticket para la impresora del servidor (formato fiscal en services/fiscal/formato.js)
 function buildFacturaTexto({ factura, cliente, detalles, pagos, negocio }) {
-    const line = '-'.repeat(42);
-    const out = [];
-    out.push(String(negocio?.nombre_negocio || 'FACTURA'));
-    if (negocio?.direccion) out.push(String(negocio.direccion));
-    if (negocio?.telefono) out.push(`Tel: ${negocio.telefono}`);
-    if (negocio?.nit) out.push(`NIT: ${negocio.nit}`);
-    out.push(line);
-    out.push(`Factura #: ${factura?.id ?? '-'}`);
-    out.push(`Fecha: ${new Date(factura?.fecha || Date.now()).toLocaleString('es-CO')}`);
-    out.push(`Cliente: ${cliente?.nombre || '-'}`);
-    out.push(line);
-    (detalles || []).forEach((d) => {
-        out.push(String(d?.producto_nombre || ''));
-        out.push(`${Number(d?.cantidad || 0)}${String(d?.unidad_medida || '')}  $${Number(d?.precio_unitario || 0).toLocaleString('es-CO')}  $${Number(d?.subtotal || 0).toLocaleString('es-CO')}`);
-    });
-    out.push(line);
-    out.push(`Total: $${Number(factura?.total || 0).toLocaleString('es-CO')}`);
-    if (Array.isArray(pagos) && pagos.length > 0) {
-        out.push('Pagos:');
-        pagos.forEach((p) => {
-            const metodo = String(p?.metodo || '').trim();
-            const ref = String(p?.referencia || '').trim();
-            out.push(`${metodo}: $${Number(p?.monto || 0).toLocaleString('es-CO')}${ref ? ` (${ref})` : ''}`);
-        });
-    } else {
-        out.push(`Forma de pago: ${String(factura?.forma_pago || '')}`);
-    }
-    out.push(String(negocio?.pie_pagina || 'Gracias por su compra'));
-    return out.join('\r\n');
+    return formato.texto({ factura: factura || {}, cliente, detalles, pagos, negocio });
 }
 
-// Crear nueva factura
+// Crear nueva factura (venta rápida). El servidor toma los precios de la base y calcula ITBIS y propina:
+// el navegador solo envía producto, cantidad y unidad. Solo un administrador puede cambiar un precio.
+// Relacionado con: services/facturacion.js (facturarVenta), public/js/factura.js
 router.post('/', async (req, res) => {
-    const { cliente_id, total, forma_pago, productos, pagos } = req.body;
-    
-    console.log('Datos recibidos:', req.body);
-    
-    if (!cliente_id || !productos || productos.length === 0) {
+    const { cliente_id, forma_pago, productos, pagos, credito_fiscal } = req.body || {};
+    if (!cliente_id || !Array.isArray(productos) || productos.length === 0) {
         return res.status(400).json({ error: 'Datos incompletos' });
     }
-
-    // Validaciones ANTES de abrir transacción (evita dejar conexiones abiertas si hay error)
-    const totalNum = Number(total || 0);
-    if (!Number.isFinite(totalNum) || totalNum <= 0) {
-        return res.status(400).json({ error: 'Total inválido' });
-    }
-
-    // Validación rápida (sin Stripe) antes de abrir la transacción
-    const pagosSinOnline = Array.isArray(pagos) ? pagos.filter(p => !['stripe', 'cripto'].includes(String(p?.metodo || '').toLowerCase())) : pagos;
-    const hayStripe = Array.isArray(pagos) && pagos.length !== pagosSinOnline.length;
-    if (!hayStripe) {
-        const pre = normalizarPagos(pagos);
-        if (pre.length > 0 && sumatoriaPagos(pre) < Number(totalNum) - 0.01) {
-            return res.status(400).json({ error: 'La suma de pagos no coincide con el total' });
-        }
-    }
-
+    let connection;
     try {
-        // Obtener conexión del pool
-        const connection = await db.getConnection();
-
-        try {
-            // Iniciar transacción
-            await connection.beginTransaction();
-
-            // Pagos con Stripe: verificados y bloqueados dentro de la transacción
-            // Relacionado con: services/stripe.js (aplicarPagosStripe)
-            const stripeAplicado = await stripeService.aplicarPagosStripe(connection, pagos);
-
-            // Si vienen pagos (pago mixto), validamos y definimos forma_pago compatible
-            // Pagos con cripto (BTCPay): misma verificación dentro de la transacción
-            const criptoAplicado = await criptoService.aplicarPagosCripto(connection, stripeAplicado.pagos);
-            const pagosNorm = normalizarPagos(criptoAplicado.pagos);
-            let formaPagoDB = (forma_pago || 'efectivo');
-            if (pagosNorm.length > 0) {
-                const suma = sumatoriaPagos(pagosNorm);
-                // Solo rechazar si la suma es menor al total (falta dinero)
-                if (suma < Number(totalNum) - 0.01) {
-                    throw new stripeService.StripePublicError('La suma de pagos no coincide con el total');
-                }
-                formaPagoDB = pagosNorm.length === 1 ? pagosNorm[0].metodo : 'mixto';
-            } else {
-                // Compatibilidad con flujo anterior (un solo medio)
-                const fp = String(forma_pago || 'efectivo').toLowerCase();
-                formaPagoDB = ['efectivo', 'transferencia', 'tarjeta', 'qr', 'cripto', 'mixto'].includes(fp) ? fp : 'efectivo';
-            }
-
-            // Insertar factura
-            const [result] = await connection.query(
-                'INSERT INTO facturas (cliente_id, total, forma_pago) VALUES (?, ?, ?)',
-                [cliente_id, totalNum, formaPagoDB]
-            );
-
-            const factura_id = result.insertId;
-
-            // Insertar detalles de factura
-            const detallesValues = productos.map(p => [
-                factura_id,
-                p.producto_id,
-                p.cantidad,
-                p.precio,
-                p.unidad,
-                p.subtotal
-            ]);
-
-            await connection.query(
-                'INSERT INTO detalle_factura (factura_id, producto_id, cantidad, precio_unitario, unidad_medida, subtotal) VALUES ?',
-                [detallesValues]
-            );
-
-            // Guardar pagos (pago mixto) si existe la tabla factura_pagos
-            // Relacionado con database.sql -> tabla factura_pagos
-            try {
-                if (pagosNorm.length > 0) {
-                    const pagosValues = pagosNorm.map(p => ([factura_id, p.metodo, p.monto, p.referencia]));
-                    await connection.query(
-                        'INSERT INTO factura_pagos (factura_id, metodo, monto, referencia) VALUES ?',
-                        [pagosValues]
-                    );
-                } else {
-                    // Compatibilidad: crear 1 pago con el método seleccionado y el total
-                    await connection.query(
-                        'INSERT INTO factura_pagos (factura_id, metodo, monto, referencia) VALUES (?, ?, ?, ?)',
-                        [factura_id, (formaPagoDB === 'mixto' ? 'efectivo' : formaPagoDB), totalNum, null]
-                    );
-                }
-            } catch (_) {
-                // Si la tabla no existe (instalación vieja), no rompemos la creación de factura
-            }
-
-            await stripeService.marcarUsados(connection, stripeAplicado.ids, factura_id);
-            await criptoService.marcarUsados(connection, criptoAplicado.ids, factura_id);
-            // Inventario: descuento de insumos por receta
-            await inventarioService.descontarPorFactura(connection, factura_id, req.session?.user?.usuario || null);
-
-            // Confirmar transacción
-            await connection.commit();
-            
-            // Devolver la conexión al pool
-            connection.release();
-            
-            res.status(201).json({ id: factura_id });
-
-        } catch (error) {
-            // Si hay error, hacer rollback
-            await connection.rollback();
-            // Devolver la conexión al pool
-            connection.release();
-            throw error; // Re-lanzar el error para que lo maneje el catch exterior
-        }
-
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+        const r = await facturacionService.facturarVenta(connection, {
+            clienteId: cliente_id,
+            productos,
+            formaPago: forma_pago,
+            pagos,
+            usuario: req.session?.user?.usuario || null,
+            esAdmin: req.session?.user?.rol === 'administrador',
+            quiereCreditoFiscal: credito_fiscal === true || credito_fiscal === 1 || credito_fiscal === '1'
+        });
+        await connection.commit();
+        emision.programar(r.facturaId);
+        res.status(201).json({ id: r.facturaId, total: r.total, ncf: r.fiscal.ncf });
     } catch (error) {
+        if (connection) await connection.rollback().catch(() => {});
         console.error('Error al crear factura:', error);
         if (error && error.publico) return res.status(400).json({ error: error.message });
         res.status(500).json({ error: 'Error al crear factura' });
+    } finally {
+        if (connection) connection.release();
     }
 });
 
@@ -347,8 +228,20 @@ router.get('/:id/imprimir', async (req, res) => {
             return res.status(404).json({ error: 'No se encontraron detalles de la factura' });
         }
 
+        // QR de verificación y vencimiento de la secuencia (representación impresa del e-CF)
+        const f0 = facturas[0];
+        let qr = null;
+        if (f0.qr_url) { try { qr = await QRCode.toDataURL(f0.qr_url, { margin: 1, width: 180 }); } catch (_) { qr = null; } }
+        let vence = null;
+        if (f0.ncf && f0.tipo_comprobante) {
+            const n = Number(String(f0.ncf).slice(3));
+            const [sec] = await db.query('SELECT vence FROM fiscal_secuencias WHERE tipo = ? AND desde <= ? AND hasta >= ? LIMIT 1', [f0.tipo_comprobante, n, n]);
+            vence = sec[0] ? sec[0].vence : null;
+        }
+
         // Renderizar la vista de la factura
         res.render('factura', {
+            qr, vence, appUrl: String(process.env.APP_URL || '').replace(/\/$/, ''),
             factura: facturas[0],
             detalles: detalles,
             config: config,
@@ -409,7 +302,12 @@ router.get('/:id/detalles', async (req, res) => {
                 id: factura.id,
                 fecha: factura.fecha,
                 total: parseFloat(factura.total || 0),
-                forma_pago: factura.forma_pago
+                forma_pago: factura.forma_pago,
+                ncf: factura.ncf || null,
+                tipo_comprobante: factura.tipo_comprobante || null,
+                fiscal_estado: factura.fiscal_estado,
+                itbis_total: parseFloat(factura.itbis_total || 0),
+                propina: parseFloat(factura.propina || 0)
             },
             cliente: {
                 nombre: factura.cliente_nombre || '',

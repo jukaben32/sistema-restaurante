@@ -115,7 +115,7 @@ $(document).ready(function() {
                     .html(`
                         <div><strong>${producto.codigo}</strong> - ${producto.nombre}</div>
                         <div class="small text-muted">
-                            KG: $${producto.precio_kg} | UND: $${producto.precio_unidad} | LB: $${producto.precio_libra}
+                            KG: RD$\u00a0${producto.precio_kg} | UND: RD$\u00a0${producto.precio_unidad} | LB: RD$\u00a0${producto.precio_libra}
                         </div>
                     `)
                     .click(function(e) {
@@ -204,7 +204,7 @@ $(document).ready(function() {
     }
 
     function formatMoney(n) {
-        return `$${Number(n || 0).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        return `RD$\u00a0${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
 
     function almostEqualMoney(a, b) {
@@ -469,8 +469,8 @@ $(document).ready(function() {
                     <td>${item.nombre}</td>
                     <td>${item.cantidad}</td>
                     <td>${item.unidad}</td>
-                    <td class="text-end">$${item.precio.toLocaleString('es-CO')}</td>
-                    <td class="text-end">$${item.subtotal.toLocaleString('es-CO')}</td>
+                    <td class="text-end">RD$\u00a0${item.precio.toLocaleString('en-US')}</td>
+                    <td class="text-end">RD$\u00a0${item.subtotal.toLocaleString('en-US')}</td>
                     <td class="text-center">
                         <button class="btn btn-danger btn-sm" onclick="eliminarProducto(${index})">
                             <i class="bi bi-trash"></i>
@@ -480,8 +480,12 @@ $(document).ready(function() {
             `);
         });
 
-        $('#totalFactura').text(totalFactura.toLocaleString('es-CO'));
+        $('#totalFactura').text(totalFactura.toLocaleString('en-US'));
+        $('#notaImpuestosVR').toggleClass('d-none', !window.__fiscalActivo);
     }
+
+    // ¿Modo fiscal activo? Entonces el total de la pantalla es antes de ITBIS y propina (el servidor los calcula al cobrar)
+    fetch('/api/fiscal/estado').then(r => r.json()).then(e => { window.__fiscalActivo = !!(e && e.activo); actualizarTablaProductos(); }).catch(() => {});
 
     // Función para eliminar producto
     window.eliminarProducto = function(index) {
@@ -618,8 +622,44 @@ $(document).ready(function() {
         });
     };
 
+    // Vista previa fiscal: el SERVIDOR calcula ITBIS, propina y total (el navegador solo muestra)
+    // Relacionado con: routes/fiscal.js (POST /api/fiscal/cotizar), services/facturacion.js (facturarVenta)
+    async function cotizarVenta(cliente_id, credito_fiscal) {
+        const r = await fetch('/api/fiscal/cotizar', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cliente_id, credito_fiscal: !!credito_fiscal, tipo_pedido: 'rapida',
+                items: productosFactura.map(p => ({ producto_id: p.producto_id, cantidad: p.cantidad, unidad: p.unidad, precio: p.precio })) })
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || 'No se pudo calcular el total');
+        return d;
+    }
+
+    // Desglose de la cuenta y tipo de comprobante: Consumo (E32) o Crédito fiscal (E31, solo si el cliente tiene RNC o cédula)
+    async function elegirComprobante(cot, cliente) {
+        const tieneDoc = cliente && ['rnc', 'cedula'].includes(cliente.tipo_documento) && cliente.documento;
+        const fila = (t, v, fuerte) => `<div class="d-flex justify-content-between ${fuerte ? 'fw-bold fs-5 border-top pt-2 mt-1' : ''}"><span>${t}</span><span>${formatMoney(v)}</span></div>`;
+        const r = await Swal.fire({
+            title: 'Cuenta',
+            html: `<div class="text-start">
+                ${fila('Subtotal', cot.subtotal)}
+                ${fila('ITBIS', cot.itbis)}
+                ${cot.propina > 0 ? fila(`Propina legal ${cot.propina_tasa}%`, cot.propina) : ''}
+                ${fila('TOTAL', cot.total, true)}
+                <hr>
+                <div class="fw-semibold mb-1">Tipo de comprobante</div>
+                <div class="form-check"><input class="form-check-input" type="radio" name="tipoComp" id="tcConsumo" checked><label class="form-check-label" for="tcConsumo">Factura de consumo <span class="text-muted small">(la normal)</span></label></div>
+                <div class="form-check"><input class="form-check-input" type="radio" name="tipoComp" id="tcCredito" ${tieneDoc ? '' : 'disabled'}><label class="form-check-label" for="tcCredito">Crédito fiscal <span class="text-muted small">(el cliente es una empresa y lo pide)</span></label></div>
+                <div class="small text-muted mt-1">${tieneDoc ? `Cliente: ${cliente.razon_social || cliente.nombre} · ${String(cliente.tipo_documento).toUpperCase()} ${cliente.documento}` : 'Para crédito fiscal el cliente debe tener RNC o cédula registrados (en Clientes).'}</div>
+            </div>`,
+            showCancelButton: true, confirmButtonText: 'Continuar al cobro', cancelButtonText: 'Cancelar',
+            preConfirm: () => ({ credito: !!document.getElementById('tcCredito').checked })
+        });
+        return r.isConfirmed ? r.value : null;
+    }
+
     // Generar factura
-    $('#generarFactura').click(function() {
+    $('#generarFactura').click(async function() {
         console.log('=== INICIO GENERACIÓN DE FACTURA ===');
         const cliente_id = $('#cliente_id').val();
         const forma_pago = $('#formaPago').val();
@@ -634,12 +674,30 @@ $(document).ready(function() {
             return;
         }
 
+        // Total a cobrar según el servidor (con ITBIS y propina legal cuando el modo fiscal está activo)
+        let totalCobrar = totalFactura;
+        let credito_fiscal = false;
+        try {
+            let cot = await cotizarVenta(cliente_id, false);
+            if (cot.fiscal) {
+                const cliente = await fetch(`/api/clientes/${encodeURIComponent(cliente_id)}`).then(r => r.json()).catch(() => null);
+                const eleccion = await elegirComprobante(cot, cliente);
+                if (!eleccion) return;
+                credito_fiscal = eleccion.credito;
+                if (credito_fiscal) cot = await cotizarVenta(cliente_id, true);
+            }
+            totalCobrar = cot.total;
+        } catch (err) {
+            mostrarAlerta('error', err.message);
+            return;
+        }
+
         // Si eligieron pago mixto, pedimos el desglose antes de enviar
         // (para efectivo/transferencia/tarjeta simple, no mostramos modal y enviamos forma_pago como antes)
         const enviarFactura = (pagosSeleccionados) => {
             const factura = {
             cliente_id: cliente_id,
-            total: totalFactura,
+            credito_fiscal: credito_fiscal,
             forma_pago: forma_pago,
             // pagos[] solo se envía si es mixto (o si el usuario lo definió)
             pagos: Array.isArray(pagosSeleccionados) ? pagosSeleccionados : undefined,
@@ -744,7 +802,7 @@ $(document).ready(function() {
         };
 
         if (forma_pago === 'mixto') {
-            pedirPagosMixtos(totalFactura).then(async pagos => {
+            pedirPagosMixtos(totalCobrar).then(async pagos => {
                 if (!pagos) return; // cancelado
                 try {
                     // Filas "Stripe": cobro con QR antes de facturar (public/js/stripe-cobro.js)
@@ -761,7 +819,7 @@ $(document).ready(function() {
         }
 
         if (forma_pago === 'stripe') {
-            window.StripeCobro.cobrar({ monto: totalFactura, descripcion: 'Venta rápida' })
+            window.StripeCobro.cobrar({ monto: totalCobrar, descripcion: 'Venta rápida' })
                 .then(r => {
                     if (!r) return; // cobro cancelado
                     pagosFactura = [{ metodo: 'stripe', monto: r.monto, stripe_pago_id: r.stripe_pago_id }];
@@ -772,7 +830,7 @@ $(document).ready(function() {
         }
 
         if (forma_pago === 'cripto') {
-            window.CriptoCobro.cobrar({ monto: totalFactura, descripcion: 'Venta rápida' })
+            window.CriptoCobro.cobrar({ monto: totalCobrar, descripcion: 'Venta rápida' })
                 .then(r => {
                     if (!r) return; // cobro cancelado
                     pagosFactura = [{ metodo: 'cripto', monto: r.monto, cripto_pago_id: r.cripto_pago_id }];
@@ -818,7 +876,7 @@ $(document).ready(function() {
                         </small>
                     </td>
                     <td><small>${productosResumen}</small></td>
-                    <td>$${pedido.total.toLocaleString('es-CO')}</td>
+                    <td>RD$\u00a0${pedido.total.toLocaleString('en-US')}</td>
                     <td>
                         <div class="btn-group btn-group-sm">
                             <button class="btn btn-primary" onclick="cargarPedido(${index})" title="Cargar pedido">

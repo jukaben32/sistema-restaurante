@@ -99,9 +99,9 @@
                                         <% if (producto.categoria) { %><span class="badge text-bg-light border ms-1"><%= producto.categoria %></span><% } %>
                                         <% if (Number(producto.disponible) === 0) { %><span class="badge text-bg-warning ms-1">Agotado</span><% } %>
                                     </td>
-                                    <td class="text-end">$<%= (Number(producto.precio_kg) || 0).toFixed(2) %></td>
-                                    <td class="text-end">$<%= (Number(producto.precio_unidad) || 0).toFixed(2) %></td>
-                                    <td class="text-end">$<%= (Number(producto.precio_libra) || 0).toFixed(2) %></td>
+                                    <td class="text-end">RD$&nbsp;<%= (Number(producto.precio_kg) || 0).toFixed(2) %></td>
+                                    <td class="text-end">RD$&nbsp;<%= (Number(producto.precio_unidad) || 0).toFixed(2) %></td>
+                                    <td class="text-end">RD$&nbsp;<%= (Number(producto.precio_libra) || 0).toFixed(2) %></td>
                                     <td class="text-center">
                                         <div class="action-buttons">
                                             <!-- Gestión de productos hijos (Padre -> Hijos) -->
@@ -176,6 +176,20 @@
                                     <input type="number" class="form-control" id="precioLibra" step="0.01" min="0" required>
                                 </div>
                             </div>
+                        </div>
+
+                        <!-- Impuesto (ITBIS) del producto. Relacionado con: services/fiscal/calculo.js, routes/productos.js -->
+                        <div class="row g-2 mb-1">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold" for="itbisTasa"><i class="bi bi-percent me-1"></i>ITBIS de este producto</label>
+                                <select class="form-select form-select-sm" id="itbisTasa">
+                                    <option value="18" selected>18 % (general: platos y bebidas)</option>
+                                    <option value="16">16 % (tasa reducida)</option>
+                                    <option value="0">0 % (gravado a cero)</option>
+                                    <option value="E">Exento (sin ITBIS)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 small text-muted align-self-end">Los alimentos preparados y las bebidas en restaurante llevan 18 %. Si tienes dudas con algún producto, pregunta a tu contador.</div>
                         </div>
 
                         <!-- Carta digital (menú QR). Relacionado con: routes/menu.js, views/menu.ejs -->

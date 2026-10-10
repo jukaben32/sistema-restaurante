@@ -18,7 +18,7 @@ async function descontarPorFactura(connection, facturaId, usuario = null) {
     );
     for (const c of consumos) {
         const cantidad = Number(c.total || 0);
-        if (!(cantidad > 0)) continue;
+        if (!cantidad) continue; // negativa = devolución por nota de crédito: el insumo vuelve al stock
         const [upd] = await connection.query(
             'UPDATE insumos SET stock = stock - ? WHERE id = ? RETURNING stock',
             [cantidad, c.insumo_id]
@@ -27,7 +27,7 @@ async function descontarPorFactura(connection, facturaId, usuario = null) {
         await connection.query(
             `INSERT INTO inventario_movimientos (insumo_id, tipo, cantidad, stock_resultante, factura_id, nota, usuario)
              VALUES (?, 'venta', ?, ?, ?, ?, ?)`,
-            [c.insumo_id, -cantidad, stock, facturaId, `Factura #${facturaId}`, usuario]
+            [c.insumo_id, -cantidad, stock, facturaId, cantidad < 0 ? `Devolución (nota de crédito #${facturaId})` : `Factura #${facturaId}`, usuario]
         );
     }
     return consumos.length;

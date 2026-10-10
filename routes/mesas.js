@@ -6,6 +6,7 @@ const path = require('path');
 const os = require('os');
 const { exec } = require('child_process');
 const facturacionService = require('../services/facturacion');
+const emision = require('../services/fiscal/emision');
 
 // Rutas para gestión de mesas y pedidos de restaurante
 // - Renderiza la vista de mesas (GET /mesas)
@@ -649,11 +650,19 @@ router.post('/pedidos/:pedidoId/comanda/imprimir-servidor', async (req, res) => 
 router.post('/pedidos/:pedidoId/items', async (req, res) => {
     try {
         const pedidoId = req.params.pedidoId;
-        const { producto_id, cantidad, unidad, precio, nota } = req.body || {};
-        if (!producto_id || !cantidad || !precio) {
-            return res.status(400).json({ error: 'producto_id, cantidad y precio son requeridos' });
+        const { producto_id, cantidad, unidad, nota } = req.body || {};
+        if (!producto_id || !cantidad) {
+            return res.status(400).json({ error: 'producto_id y cantidad son requeridos' });
         }
-        const subtotal = Number(cantidad) * Number(precio);
+        // El precio sale de la base de datos: el navegador (o un mesero) no puede cambiarlo. Solo el administrador puede enviar otro precio.
+        const [prodRows] = await db.query('SELECT precio_kg, precio_unidad, precio_libra FROM productos WHERE id = ?', [producto_id]);
+        if (!prodRows[0]) return res.status(404).json({ error: 'Producto no encontrado' });
+        const u = String(unidad || 'UND').toUpperCase();
+        let precio = Number(u === 'KG' ? prodRows[0].precio_kg : u === 'LB' ? prodRows[0].precio_libra : prodRows[0].precio_unidad);
+        const enviado = Number((req.body || {}).precio);
+        if (req.session?.user?.rol === 'administrador' && Number.isFinite(enviado) && enviado > 0) precio = enviado;
+        if (!(precio > 0)) return res.status(400).json({ error: 'El producto no tiene precio para esa unidad de medida' });
+        const subtotal = Math.round(Number(cantidad) * precio * 100) / 100;
         const connection = await db.getConnection();
         try {
             await connection.beginTransaction();
@@ -1068,19 +1077,20 @@ router.put('/items/:itemId/estado', async (req, res) => {
 // POST /mesas/pedidos/:pedidoId/facturar - API: genera factura desde pedido y cierra mesa
 // La lógica de facturación vive en services/facturacion.js (la comparten Mesas y Delivery).
 router.post('/pedidos/:pedidoId/facturar', async (req, res) => {
-    const { cliente_id, forma_pago, pagos } = req.body || {};
+    const { cliente_id, forma_pago, pagos, credito_fiscal } = req.body || {};
     if (!cliente_id) return res.status(400).json({ error: 'cliente_id requerido para facturar' });
     let connection;
     try {
         connection = await db.getConnection();
         await connection.beginTransaction();
 
-        const { facturaId, pedido } = await facturacionService.facturarPedido(connection, {
+        const { facturaId, pedido, fiscal, total } = await facturacionService.facturarPedido(connection, {
             pedidoId: req.params.pedidoId,
             clienteId: cliente_id,
             formaPago: forma_pago,
             pagos,
-            usuario: req.session?.user?.usuario || null
+            usuario: req.session?.user?.usuario || null,
+            quiereCreditoFiscal: credito_fiscal === true || credito_fiscal === 1 || credito_fiscal === '1'
         });
 
         if (pedido.mesa_id) {
@@ -1093,7 +1103,8 @@ router.post('/pedidos/:pedidoId/facturar', async (req, res) => {
         }
 
         await connection.commit();
-        res.status(201).json({ factura_id: facturaId });
+        emision.programar(facturaId); // envío del e-CF con la venta ya confirmada
+        res.status(201).json({ factura_id: facturaId, ncf: fiscal.ncf, total });
     } catch (error) {
         if (connection) await connection.rollback().catch(() => {});
         console.error('Error en facturación desde pedido:', error);

@@ -1,6 +1,28 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const calculo = require('../services/fiscal/calculo');
+
+// Datos fiscales del cliente (para crédito fiscal E31 / B01). Devuelve { error } o { tipo, documento, razon, email }.
+// Relacionado con: services/facturacion.js (comprador), services/fiscal/calculo.js
+function datosFiscales(b) {
+    let tipo = String(b.tipo_documento || 'ninguno').toLowerCase();
+    if (!['ninguno', 'rnc', 'cedula', 'pasaporte'].includes(tipo)) return { error: 'Tipo de documento inválido' };
+    let documento = null;
+    if (tipo !== 'ninguno') {
+        const crudo = String(b.documento || '').trim();
+        if (!crudo) { tipo = 'ninguno'; } else {
+            documento = calculo.normalizarDocumento(tipo, crudo);
+            if (!calculo.validarDocumento(tipo, documento)) {
+                return { error: tipo === 'rnc' ? 'El RNC no es válido (9 dígitos; revisa el dígito verificador).' : tipo === 'cedula' ? 'La cédula no es válida (11 dígitos; revisa el dígito verificador).' : 'El pasaporte no es válido.' };
+            }
+        }
+    }
+    const razon = String(b.razon_social || '').trim().slice(0, 150) || null;
+    const email = String(b.email || '').trim().slice(0, 150) || null;
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'El correo no es válido' };
+    return { tipo, documento, razon, email };
+}
 
 // GET /clientes - Mostrar página de clientes
 router.get('/', async (req, res) => {
@@ -24,12 +46,12 @@ router.get('/buscar', async (req, res) => {
         const query = req.query.q || '';
         const sql = `
             SELECT * FROM clientes 
-            WHERE nombre ILIKE ? OR telefono ILIKE ?
+            WHERE nombre ILIKE ? OR telefono ILIKE ? OR documento LIKE ? OR razon_social ILIKE ?
             ORDER BY nombre
             LIMIT 10
         `;
         const searchTerm = `%${query}%`;
-        const [clientes] = await db.query(sql, [searchTerm, searchTerm]);
+        const [clientes] = await db.query(sql, [searchTerm, searchTerm, searchTerm, searchTerm]);
         res.json(clientes);
     } catch (error) {
         console.error('Error al buscar clientes:', error);
@@ -61,10 +83,12 @@ router.post('/', async (req, res) => {
         if (!nombre) {
             return res.status(400).json({ error: 'El nombre es requerido' });
         }
+        const fis = datosFiscales(req.body);
+        if (fis.error) return res.status(400).json({ error: fis.error });
 
         const [result] = await db.query(
-            'INSERT INTO clientes (nombre, direccion, telefono) VALUES (?, ?, ?)',
-            [nombre, direccion || null, telefono || null]
+            'INSERT INTO clientes (nombre, direccion, telefono, tipo_documento, documento, razon_social, email) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [nombre, direccion || null, telefono || null, fis.tipo, fis.documento, fis.razon, fis.email]
         );
 
         console.log('Cliente creado:', result);
@@ -88,9 +112,12 @@ router.put('/:id', async (req, res) => {
             return res.status(400).json({ error: 'El nombre es requerido' });
         }
 
+        const fis = datosFiscales(req.body);
+        if (fis.error) return res.status(400).json({ error: fis.error });
+
         const [result] = await db.query(
-            'UPDATE clientes SET nombre = ?, direccion = ?, telefono = ? WHERE id = ?',
-            [nombre, direccion || null, telefono || null, req.params.id]
+            'UPDATE clientes SET nombre = ?, direccion = ?, telefono = ?, tipo_documento = ?, documento = ?, razon_social = ?, email = ? WHERE id = ?',
+            [nombre, direccion || null, telefono || null, fis.tipo, fis.documento, fis.razon, fis.email, req.params.id]
         );
 
         if (result.affectedRows === 0) {

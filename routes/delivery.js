@@ -8,6 +8,7 @@ const delivery = require('../services/delivery');
 const clientesService = require('../services/clientes');
 const avisos = require('../services/agente/avisos');
 const { enSegundoPlano } = require('../services/segundoPlano');
+const emision = require('../services/fiscal/emision');
 
 const router = express.Router();
 
@@ -99,6 +100,9 @@ accion('en-camino', (req) => enTransaccion((c) => delivery.marcarEnCamino(c, Num
 accion('validar-pago', (req) => enTransaccion((c) => delivery.validarTransferencia(c, Number(req.params.id))).then(() => ({})), 'Error al validar el pago');
 accion('cobro-stripe', (req) => delivery.cobroStripe(Number(req.params.id), { baseUrl: baseUrl(req), usuario: usuario(req) }), 'Error al generar el enlace de pago');
 accion('cobro-cripto', (req) => delivery.cobroCripto(Number(req.params.id), { usuario: usuario(req) }), 'Error al generar el cobro cripto');
-accion('entregar', (req) => enTransaccion((c) => delivery.entregarYFacturar(c, Number(req.params.id), { pagos: req.body?.pagos, usuario: req.session?.user?.usuario || null })), 'Error al entregar y facturar', (id) => avisos.pedido(id, 'entregado'));
+accion('entregar', (req) => enTransaccion((c) => delivery.entregarYFacturar(c, Number(req.params.id), { pagos: req.body?.pagos, usuario: req.session?.user?.usuario || null, quiereCreditoFiscal: !!req.body?.credito_fiscal })).then((out) => {
+    emision.programar(out.factura_id); // el e-CF se envía ya con la venta confirmada
+    return out;
+}), 'Error al entregar y facturar', (id) => avisos.pedido(id, 'entregado'));
 
 module.exports = router;

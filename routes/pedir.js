@@ -62,6 +62,12 @@ publico.get('/api/pedir/catalogo', async (req, res) => {
     } catch (e) { enviarError(res, e, 'No se pudo cargar el menú'); }
 });
 
+publico.post('/api/pedir/cotizar', async (req, res) => {
+    try {
+        res.json(await app.cotizarCarrito(req.body || {}, req));
+    } catch (e) { enviarError(res, e, 'No se pudo calcular el total'); }
+});
+
 publico.post('/api/pedir/pedido', async (req, res) => {
     try {
         res.status(201).json(await app.crearPedido(req.body || {}, req));

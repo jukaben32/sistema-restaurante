@@ -3,8 +3,8 @@
 (function () {
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const num = (n, d = 2) => Number(n || 0).toLocaleString('es', { minimumFractionDigits: 0, maximumFractionDigits: d });
-  const money = (n) => `$${Number(n || 0).toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const num = (n, d = 2) => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: d });
+  const money = (n) => `RD$\u00a0${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const modalInsumo = new bootstrap.Modal($('modalInsumo'));
   const modalReceta = new bootstrap.Modal($('modalReceta'));
   // Unidades convertibles (igual que services/unidades.js): factor respecto a g (peso) o ml (volumen)
@@ -98,7 +98,7 @@
       $('tbMovs').innerHTML = rows.length ? rows.map((m) => {
         const [t, c] = TIPO[m.tipo] || [m.tipo, ''];
         const cant = Number(m.cantidad);
-        return `<tr><td class="small text-nowrap">${new Date(m.created_at).toLocaleString('es')}</td><td>${esc(m.insumo)}</td>
+        return `<tr><td class="small text-nowrap">${new Date(m.created_at).toLocaleString('en-US')}</td><td>${esc(m.insumo)}</td>
           <td><span class="rm-chip ${c}">${t}</span></td><td class="num ${cant < 0 ? 'text-danger' : 'text-success'}">${cant > 0 ? '+' : ''}${num(cant, 3)} ${esc(m.unidad)}</td>
           <td class="num">${num(m.stock_resultante, 3)}</td><td class="small">${esc(m.nota || '')}</td><td class="small text-muted">${esc(m.usuario || '')}</td></tr>`;
       }).join('') : '<tr><td colspan="7"><div class="rm-empty">Aún no hay movimientos</div></td></tr>';

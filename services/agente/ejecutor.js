@@ -151,7 +151,7 @@ const HANDLERS = {
         return {
             moneda: cfg.moneda,
             lineas: cot.lineas.map((l) => ({ plato: l.nombre, cantidad: l.cantidad, subtotal: l.subtotal })),
-            subtotal: cot.subtotal, costo_envio: cot.envio, total: cot.total,
+            subtotal: cot.subtotal, costo_envio: cot.envio, itbis: cot.itbis, propina_legal: cot.propina, total: cot.total,
             pedido_minimo: tipo === 'delivery' ? cfg.pedidoMinimo : 0,
             cumple_minimo: tipo !== 'delivery' || cfg.pedidoMinimo <= 0 || cot.subtotal >= cfg.pedidoMinimo
         };

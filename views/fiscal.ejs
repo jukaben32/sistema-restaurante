@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('partials/head') %>
+    <title>Fiscal (DGII) · Restaurant Martin</title>
+    <style>
+        .nav-pills .nav-link.active { background: var(--rm-ink); }
+        .nav-pills .nav-link { color: var(--rm-ink); font-weight: 600; }
+        .chk { display: flex; gap: .5rem; align-items: baseline; padding: .15rem 0; }
+        .chk i.ok { color: var(--rm-ok); } .chk i.no { color: var(--rm-danger); }
+        .estado { font-size: .78rem; }
+        pre.json { background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 8px; max-height: 320px; overflow: auto; font-size: .76rem; }
+    </style>
+</head>
+<body class="rm">
+    <%- include('partials/navbar') %>
+    <main class="rm-page container pb-5">
+        <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+            <div>
+                <h1 class="rm-title h3"><i class="bi bi-shield-check me-2" style="color:var(--rm-accent)"></i>Fiscal (DGII)</h1>
+                <p class="rm-sub">Facturas electrónicas (e-CF), ITBIS, propina legal, notas de crédito y los reportes 606, 607 y 608. Las decisiones fiscales confírmalas siempre con tu contador.</p>
+            </div>
+            <a href="/compras" class="btn btn-outline-secondary btn-sm align-self-start"><i class="bi bi-cart-check"></i> Compras y gastos (606)</a>
+        </div>
+
+        <div id="avisoModo"></div>
+
+        <ul class="nav nav-pills mb-3 gap-1" role="tablist" id="tabs">
+            <li class="nav-item"><button class="nav-link <%= tab === 'estado' ? 'active' : '' %>" data-bs-toggle="pill" data-bs-target="#tabEstado" type="button">Comprobantes</button></li>
+            <li class="nav-item"><button class="nav-link <%= tab === 'config' ? 'active' : '' %>" data-bs-toggle="pill" data-bs-target="#tabConfig" type="button">Configuración</button></li>
+            <li class="nav-item"><button class="nav-link <%= tab === 'secuencias' ? 'active' : '' %>" data-bs-toggle="pill" data-bs-target="#tabSec" type="button">Secuencias</button></li>
+            <li class="nav-item"><button class="nav-link <%= tab === 'reportes' ? 'active' : '' %>" data-bs-toggle="pill" data-bs-target="#tabRep" type="button">Reportes</button></li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- ============ Comprobantes ============ -->
+            <div class="tab-pane fade <%= tab === 'estado' ? 'show active' : '' %>" id="tabEstado">
+                <div class="row g-3 mb-3" id="kpisFiscal"></div>
+                <div class="rm-card">
+                    <div class="rm-card-h flex-wrap gap-2">
+                        <select id="fEstado" class="form-select form-select-sm" style="max-width:220px">
+                            <option value="">Todos</option><option value="problemas">Con problemas</option><option value="pendiente">Pendientes de envío</option><option value="enviado">En proceso</option>
+                            <option value="aceptado">Aceptados</option><option value="rechazado">Rechazados</option><option value="contingencia">Contingencia (serie B)</option>
+                        </select>
+                        <input id="fBuscar" class="form-control form-control-sm" style="max-width:240px" placeholder="Buscar NCF o cliente…">
+                        <button class="btn btn-sm btn-outline-secondary ms-auto" id="fRefrescar"><i class="bi bi-arrow-clockwise"></i> Actualizar</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table rm-table">
+                            <thead><tr><th>Fecha</th><th>Comprobante</th><th>Cliente</th><th class="text-end">Total</th><th>Estado</th><th></th></tr></thead>
+                            <tbody id="tbComp"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <p class="small text-muted mt-2"><i class="bi bi-info-circle"></i> Una factura nunca se borra ni se edita: si hay un error se corrige con una <b>nota de crédito</b> (botón "Abrir" → "Anular / devolver").</p>
+            </div>
+
+            <!-- ============ Configuración ============ -->
+            <div class="tab-pane fade <%= tab === 'config' ? 'show active' : '' %>" id="tabConfig">
+                <div class="row g-3">
+                    <div class="col-lg-8">
+                        <form id="formConfig" class="rm-card" autocomplete="off">
+                            <div class="rm-card-b">
+                                <h2 class="h6 fw-bold">Modo de facturación</h2>
+                                <select id="cModo" class="form-select mb-1">
+                                    <option value="no_fiscal">Práctica — documento NO fiscal (sin impuestos ni NCF)</option>
+                                    <option value="ecf_pruebas">Pruebas e-CF — numera y envía a un ambiente de pruebas</option>
+                                    <option value="ecf_produccion">PRODUCCIÓN e-CF — facturas electrónicas reales</option>
+                                    <option value="ncf_b">Serie B manual — comprobantes impresos autorizados (respaldo)</option>
+                                </select>
+                                <div class="small text-muted mb-3" id="ayudaModo"></div>
+
+                                <h2 class="h6 fw-bold mt-3">Datos del restaurante (emisor)</h2>
+                                <div class="row g-2">
+                                    <div class="col-sm-4"><label class="form-label small" for="cRnc">RNC</label><input id="cRnc" class="form-control" maxlength="11" inputmode="numeric" placeholder="9 dígitos"></div>
+                                    <div class="col-sm-8"><label class="form-label small" for="cRazon">Razón social (como está en la DGII)</label><input id="cRazon" class="form-control" maxlength="150"></div>
+                                    <div class="col-12"><label class="form-label small" for="cDir">Dirección fiscal</label><input id="cDir" class="form-control" maxlength="250"></div>
+                                    <div class="col-sm-6"><label class="form-label small" for="cMuni">Municipio</label><input id="cMuni" class="form-control" maxlength="80"></div>
+                                    <div class="col-sm-6"><label class="form-label small" for="cProvincia">Provincia</label><input id="cProvincia" class="form-control" maxlength="80"></div>
+                                </div>
+
+                                <h2 class="h6 fw-bold mt-4">Impuestos y propina</h2>
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" id="cIncluye">
+                                    <label class="form-check-label" for="cIncluye"><b>Los precios del menú ya incluyen el ITBIS</b><span class="d-block small text-muted">Apagado: el ITBIS (18 %) se suma al precio. Encendido: el precio que ve el cliente ya lo trae y el sistema lo separa en la factura. Pro-Consumidor exige que el cliente sepa cómo se cobra.</span></label>
+                                </div>
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" id="cPropina">
+                                    <label class="form-check-label" for="cPropina"><b>Cobrar la propina legal</b> <span class="small text-muted">(10 % sobre el consumo, sin contar el ITBIS)</span></label>
+                                </div>
+                                <div class="row g-2 ms-1">
+                                    <div class="col-sm-3"><label class="form-label small" for="cTasaProp">Porcentaje</label><input id="cTasaProp" type="number" min="0" max="30" step="0.5" class="form-control"></div>
+                                    <div class="col-sm-9 d-flex flex-wrap gap-3 align-items-end pb-1">
+                                        <div class="form-check"><input class="form-check-input" type="checkbox" id="cPropDel"><label class="form-check-label small" for="cPropDel">También en delivery</label></div>
+                                        <div class="form-check"><input class="form-check-input" type="checkbox" id="cPropLlevar"><label class="form-check-label small" for="cPropLlevar">También para llevar</label></div>
+                                        <div class="form-check"><input class="form-check-input" type="checkbox" id="cPropRapida"><label class="form-check-label small" for="cPropRapida">También en venta rápida</label></div>
+                                    </div>
+                                    <div class="col-12 small text-muted">En mesa siempre se cobra. Para delivery y para llevar pregunta a tu contador.</div>
+                                </div>
+
+                                <h2 class="h6 fw-bold mt-4">Proveedor de facturas electrónicas</h2>
+                                <div class="row g-2">
+                                    <div class="col-sm-6"><label class="form-label small" for="cProv">Proveedor</label>
+                                        <select id="cProv" class="form-select"><option value="mseller">MSeller (real)</option><option value="simulado">Simulado (solo para practicar; sin validez)</option></select></div>
+                                    <div class="col-sm-6"><label class="form-label small" for="cAmb">Ambiente de pruebas</label>
+                                        <select id="cAmb" class="form-select"><option value="TesteCF">TesteCF (pruebas)</option><option value="CerteCF">CerteCF (certificación)</option></select></div>
+                                    <div class="col-sm-4"><label class="form-label small" for="cMsEmail">Correo de MSeller</label><input id="cMsEmail" class="form-control" type="email" autocomplete="off"></div>
+                                    <div class="col-sm-4"><label class="form-label small" for="cMsPass">Contraseña <span id="tienePass" class="text-muted"></span></label><input id="cMsPass" class="form-control" type="password" autocomplete="new-password" placeholder="Dejar vacío para no cambiar"></div>
+                                    <div class="col-sm-4"><label class="form-label small" for="cMsKey">API key <span id="tieneKey" class="text-muted"></span></label><input id="cMsKey" class="form-control" type="password" autocomplete="new-password" placeholder="Dejar vacío para no cambiar"></div>
+                                </div>
+                                <div class="d-flex flex-wrap gap-2 mt-3">
+                                    <button class="btn btn-rm" type="submit"><i class="bi bi-check2"></i> Guardar</button>
+                                    <button class="btn btn-outline-secondary" type="button" id="btnProbar"><i class="bi bi-plug"></i> Probar conexión</button>
+                                    <button class="btn btn-outline-secondary" type="button" id="btnValidar"><i class="bi bi-patch-check"></i> Validar comprobante de prueba</button>
+                                </div>
+                                <div id="resProbar" class="small mt-2"></div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="rm-card">
+                            <div class="rm-card-b">
+                                <h2 class="h6 fw-bold">¿Listo para facturar?</h2>
+                                <div id="checklist"></div>
+                                <div class="small text-muted mt-2">Para usar facturas electrónicas reales también necesitas, fuera del sistema: el certificado digital (.p12) cargado en MSeller y haber completado la certificación de la DGII.</div>
+                            </div>
+                        </div>
+                        <div class="rm-card mt-3">
+                            <div class="rm-card-b">
+                                <h2 class="h6 fw-bold">Contingencia</h2>
+                                <p class="small text-muted mb-2">Si no se pueden emitir e-CF (falla del proveedor o de la DGII), activa la contingencia: las ventas salen con <b>NCF serie B</b> (hasta 15 días) y debes avisarlo en la Oficina Virtual.</p>
+                                <div id="estadoCont" class="mb-2"></div>
+                                <button class="btn btn-sm btn-outline-danger" id="btnCont" type="button"></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============ Secuencias ============ -->
+            <div class="tab-pane fade <%= tab === 'secuencias' ? 'show active' : '' %>" id="tabSec">
+                <div class="rm-card mb-3">
+                    <div class="rm-card-h"><strong>Secuencias autorizadas por la DGII</strong>
+                        <span class="ms-auto d-flex gap-2"><button class="btn btn-sm btn-outline-secondary" id="btnPractica"><i class="bi bi-mortarboard"></i> Cargar secuencias de práctica</button></span></div>
+                    <div class="table-responsive">
+                        <table class="table rm-table">
+                            <thead><tr><th>Tipo</th><th>Rango</th><th class="text-end">Quedan</th><th>Vence</th><th>Estado</th><th></th></tr></thead>
+                            <tbody id="tbSec"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <form class="rm-card" id="formSec" autocomplete="off">
+                    <div class="rm-card-b">
+                        <h2 class="h6 fw-bold">Agregar una secuencia</h2>
+                        <p class="small text-muted">Cuando la DGII te autoriza números (en la Oficina Virtual), anótalos aquí exactamente como te los dieron.</p>
+                        <div class="row g-2 align-items-end">
+                            <div class="col-6 col-md-3"><label class="form-label small" for="sTipo">Tipo</label><select id="sTipo" class="form-select"></select></div>
+                            <div class="col-6 col-md-2"><label class="form-label small" for="sDesde">Desde</label><input id="sDesde" type="number" min="1" class="form-control" required></div>
+                            <div class="col-6 col-md-2"><label class="form-label small" for="sHasta">Hasta</label><input id="sHasta" type="number" min="1" class="form-control" required></div>
+                            <div class="col-6 col-md-3"><label class="form-label small" for="sVence">Vence</label><input id="sVence" type="date" class="form-control" required></div>
+                            <div class="col-12 col-md-2"><button class="btn btn-rm w-100" type="submit">Agregar</button></div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- ============ Reportes ============ -->
+            <div class="tab-pane fade <%= tab === 'reportes' ? 'show active' : '' %>" id="tabRep">
+                <div class="rm-card mb-3">
+                    <div class="rm-card-b">
+                        <div class="d-flex flex-wrap gap-2 align-items-end">
+                            <div><label class="form-label small mb-1" for="rMes">Mes</label><input type="month" id="rMes" class="form-control form-control-sm"></div>
+                            <button class="btn btn-sm btn-rm" id="btnResumen"><i class="bi bi-calculator"></i> Ver resumen del mes</button>
+                        </div>
+                        <div id="resumen" class="mt-3"></div>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6"><div class="rm-card"><div class="rm-card-b">
+                        <h2 class="h6 fw-bold">606 — Compras</h2>
+                        <p class="small text-muted">Sale de "Compras y gastos". Se envía antes del día 15 del mes siguiente.</p>
+                        <div class="d-flex gap-2 flex-wrap"><a class="btn btn-sm btn-outline-secondary" data-rep="606" data-fmt="txt" href="#">TXT</a><a class="btn btn-sm btn-outline-secondary" data-rep="606" data-fmt="xlsx" href="#">Excel</a></div>
+                    </div></div></div>
+                    <div class="col-md-6"><div class="rm-card"><div class="rm-card-b">
+                        <h2 class="h6 fw-bold">607 — Ventas</h2>
+                        <p class="small text-muted">Con e-CF la DGII ya recibe tus ventas; este reporte es respaldo para el contador. Es obligatorio para la serie B.</p>
+                        <div class="d-flex gap-2 flex-wrap"><a class="btn btn-sm btn-outline-secondary" data-rep="607" data-fmt="txt" href="#">TXT</a><a class="btn btn-sm btn-outline-secondary" data-rep="607" data-fmt="xlsx" href="#">Excel</a><a class="btn btn-sm btn-outline-secondary" data-rep="607" data-fmt="txt" data-extra="&serie=B" href="#">TXT solo serie B</a></div>
+                    </div></div></div>
+                    <div class="col-md-6"><div class="rm-card"><div class="rm-card-b">
+                        <h2 class="h6 fw-bold">608 — Comprobantes anulados (serie B)</h2>
+                        <p class="small text-muted">NCF de la serie B que no se usaron o se dañaron.</p>
+                        <div class="d-flex gap-2 flex-wrap mb-3"><a class="btn btn-sm btn-outline-secondary" data-rep="608" data-fmt="txt" href="#">TXT</a><a class="btn btn-sm btn-outline-secondary" data-rep="608" data-fmt="xlsx" href="#">Excel</a></div>
+                        <form id="formAnular" class="row g-2">
+                            <div class="col-5"><input id="aNcf" class="form-control form-control-sm" placeholder="B0200000090" maxlength="11" required style="text-transform:uppercase"></div>
+                            <div class="col-5"><select id="aMotivo" class="form-select form-select-sm"></select></div>
+                            <div class="col-2"><button class="btn btn-sm btn-outline-danger w-100">Anular</button></div>
+                        </form>
+                    </div></div></div>
+                    <div class="col-md-6"><div class="rm-card"><div class="rm-card-b">
+                        <h2 class="h6 fw-bold">Propina legal</h2>
+                        <p class="small text-muted">Lo recaudado por propina (para repartirlo al personal según la ley).</p>
+                        <div class="d-flex flex-wrap gap-2 align-items-end mb-2">
+                            <input type="date" id="pDesde" class="form-control form-control-sm" style="max-width:160px"><input type="date" id="pHasta" class="form-control form-control-sm" style="max-width:160px">
+                            <button class="btn btn-sm btn-outline-secondary" id="btnPropina">Calcular</button>
+                        </div>
+                        <div id="resPropina" class="small"></div>
+                    </div></div></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Detalle del comprobante / nota de crédito -->
+    <div class="modal fade" id="modalComp" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title" id="tituloComp"></h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+                <div class="modal-body" id="cuerpoComp"></div>
+                <div class="modal-footer" id="pieComp"></div>
+            </div>
+        </div>
+    </div>
+
+    <%- include('partials/footer') %>
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
+    <script src="/js/fiscal.js"></script>
+</body>
+</html>

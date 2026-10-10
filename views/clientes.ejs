@@ -137,6 +137,22 @@
                             <label class="form-label">Teléfono</label>
                             <input type="text" class="form-control" id="telefono">
                         </div>
+                        <div class="row g-2 mb-1">
+                            <div class="col-5">
+                                <label class="form-label">Documento fiscal</label>
+                                <select class="form-select" id="cliTipoDoc">
+                                    <option value="ninguno">Ninguno</option><option value="rnc">RNC (empresa)</option><option value="cedula">Cédula</option><option value="pasaporte">Pasaporte</option>
+                                </select>
+                            </div>
+                            <div class="col-7">
+                                <label class="form-label">Número</label>
+                                <input type="text" class="form-control" id="cliDocumento" inputmode="numeric" maxlength="20" placeholder="Solo si pide crédito fiscal">
+                            </div>
+                            <div class="col-12">
+                                <input type="text" class="form-control" id="cliRazon" maxlength="150" placeholder="Razón social (nombre de la empresa, si es distinto)">
+                            </div>
+                            <div class="col-12 small text-muted">Solo hace falta cuando el cliente pide factura con <b>crédito fiscal</b> (empresas). El sistema valida el RNC o la cédula.</div>
+                        </div>
                     </form>
                 </div>
                 <div class="modal-footer">

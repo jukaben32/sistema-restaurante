@@ -92,7 +92,7 @@ $(document).ready(function() {
                     <div>
                         <strong>${item.codigo}</strong> - ${item.nombre}
                         <div class="small text-muted">
-                            KG: $${item.precio_kg} | UND: $${item.precio_unidad} | LB: $${item.precio_libra}
+                            KG: RD$\u00a0${item.precio_kg} | UND: RD$\u00a0${item.precio_unidad} | LB: RD$\u00a0${item.precio_libra}
                         </div>
                     </div>
                 `);
@@ -215,7 +215,10 @@ $(document).ready(function() {
         const cliente = {
             nombre: $('#nombreCliente').val().trim(),
             direccion: $('#direccionNuevoCliente').val().trim(),
-            telefono: $('#telefonoNuevoCliente').val().trim()
+            telefono: $('#telefonoNuevoCliente').val().trim(),
+            tipo_documento: $('#nuevoTipoDoc').val(),
+            documento: $('#nuevoDocumento').val().trim(),
+            razon_social: $('#nuevoRazon').val().trim()
         };
 
         if (!cliente.nombre) {
@@ -348,7 +351,7 @@ $(document).ready(function() {
                 $(`<a class="dropdown-item">
                     <strong>${producto.codigo}</strong> - ${producto.nombre}
                     <div class="small text-muted">
-                        KG: $${producto.precio_kg} | UND: $${producto.precio_unidad} | LB: $${producto.precio_libra}
+                        KG: RD$\u00a0${producto.precio_kg} | UND: RD$\u00a0${producto.precio_unidad} | LB: RD$\u00a0${producto.precio_libra}
                     </div>
                 </a>`)
                 .on('click', function() {
@@ -481,8 +484,8 @@ $(document).ready(function() {
                     <td>${item.codigo} - ${item.nombre}</td>
                     <td class="text-end">${item.cantidad}</td>
                     <td>${item.unidad_medida}</td>
-                    <td class="text-end">$${item.precio_unitario.toFixed(2)}</td>
-                    <td class="text-end">$${item.subtotal.toFixed(2)}</td>
+                    <td class="text-end">RD$\u00a0${item.precio_unitario.toFixed(2)}</td>
+                    <td class="text-end">RD$\u00a0${item.subtotal.toFixed(2)}</td>
                     <td class="text-center">
                         <button class="btn btn-sm btn-outline-danger" onclick="eliminarProductoFactura(${index})">
                             <i class="bi bi-trash"></i>
@@ -543,7 +546,7 @@ $(document).ready(function() {
                             </small>
                         </td>
                         <td><small>${productosResumen}</small></td>
-                        <td>$${pedido.total.toFixed(2)}</td>
+                        <td>RD$\u00a0${pedido.total.toFixed(2)}</td>
                         <td>
                             <div class="btn-group btn-group-sm">
                                 <button class="btn btn-primary" onclick="cargarPedido(${index})" title="Cargar pedido">

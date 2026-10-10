@@ -18,6 +18,8 @@ app.set('views', path.join(__dirname, 'views'));
 app.set('trust proxy', 1);
 // Código de país para enlaces de WhatsApp con números locales de 10 dígitos (views/factura.ejs)
 app.locals.codigoPaisWhatsapp = process.env.WHATSAPP_CODIGO_PAIS || '';
+// Formato de dinero y textos del comprobante (RD$, e-NCF, leyendas): services/fiscal/formato.js
+app.locals.fmt = require('./services/fiscal/formato');
 
 // Cron / mantenimiento (público, protegido con CRON_SECRET): routes/cron.js
 app.use(require('./routes/cron'));
@@ -74,6 +76,11 @@ app.use(session({
 app.use(attachUserToLocals);
 // Ruta actual para marcar la opción activa del menú (views/partials/navbar.ejs)
 app.use((req, res, next) => { res.locals.rutaActual = req.path; next(); });
+// Modo fiscal para las pantallas (aviso "documento no fiscal" en el menú): services/fiscal/config.js
+app.use(async (req, res, next) => {
+    try { const f = await require('./services/fiscal/config').obtenerCache(); res.locals.fiscal = { modo: f.modo, activo: f.activo, contingencia: f.contingencia }; } catch (_) { res.locals.fiscal = { modo: 'no_fiscal', activo: false, contingencia: false }; }
+    next();
+});
 // Pie de página (agencia, WhatsApp y redes): services/pie.js
 app.use(require('./services/pie').middleware);
 // Tiempos de las alertas por demora (Cocina y Delivery): services/alertas.js
@@ -134,6 +141,10 @@ app.use(reservasRoutes.publico);
 const pedirRoutes = require('./routes/pedir');
 app.use(pedirRoutes.publico);
 
+// Comprobante fiscal por enlace (/f/:token), sin iniciar sesión: routes/fiscal.js
+const fiscalRoutes = require('./routes/fiscal');
+app.use(fiscalRoutes.publico);
+
 // Agente de voz (Vapi): webhook público protegido por token (routes/vapi.js)
 app.use(require('./routes/vapi'));
 
@@ -154,6 +165,12 @@ app.use(inventarioRoutes);
 // Stripe: cobros (personal) y configuración (admin; antes de /configuracion)
 app.use('/api/stripe', personal, stripeRoutes.staff);
 app.use('/configuracion/stripe', requireRole('administrador'), stripeRoutes.admin);
+
+// Fiscal (DGII): vista previa del cobro para el personal; configuración, comprobantes, notas de crédito y reportes para el administrador
+app.use('/api/fiscal', personal, fiscalRoutes.staff);
+app.use(['/fiscal', '/api/fiscal', '/compras', '/api/compras'], requireRole('administrador'));
+app.use(fiscalRoutes.admin);
+app.use(require('./routes/compras'));
 
 // Datos de demostración: estado y botón Quitar (admin)
 app.use('/api/demo', requireRole('administrador'));
