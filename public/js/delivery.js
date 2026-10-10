@@ -45,7 +45,20 @@
     return '<span class="rm-chip"><i class="bi bi-question-circle"></i>Pago por definir</span>';
   }
 
+  // Alertas por demora (public/js/alertas-tiempo.js): por confirmar usa el tiempo "para confirmar"; en cocina/listo, el de cocina
+  let rojosAhora = new Set();
+  let amarillosAhora = 0;
+  function nivelDemora(p) {
+    if (!window.RMTiempo) return 0;
+    const tipo = p.columna === 'por_confirmar' ? 'confirmar' : ['en_cocina', 'listo'].includes(p.columna) ? 'cocina' : null;
+    if (!tipo) return 0;
+    const n = window.RMTiempo.nivel(p.created_at, tipo);
+    if (n === 2) rojosAhora.add(`d${p.id}`); else if (n === 1) amarillosAhora++;
+    return n;
+  }
+
   function tarjeta(p) {
+    const nivel = nivelDemora(p);
     const [oTxt, oCls] = ORIGEN[p.origen] || [p.origen, ''];
     const tel = String(p.cliente_telefono || '');
     const wa = tel ? `https://wa.me/${tel.replace(/\D/g, '')}` : '';
@@ -80,10 +93,10 @@
     const progreso = col === 'en_cocina' ? `<div class="small text-muted mt-1"><i class="bi bi-egg-fried"></i> ${p.listas} de ${p.lineas} platos listos</div>` : '';
 
     return `
-      <article class="pcard" data-id="${p.id}">
+      <article class="pcard ${window.RMTiempo ? window.RMTiempo.claseTarjeta(nivel) : ''}" data-id="${p.id}">
         <div class="d-flex justify-content-between align-items-start gap-2">
           <div><span class="cod">${esc(p.codigo)}</span> <span class="rm-chip ${oCls}">${oTxt}</span></div>
-          <small class="text-muted text-nowrap">${hace(p.created_at)}</small>
+          <small class="text-nowrap ${nivel ? window.RMTiempo.claseTiempo(nivel) : 'text-muted'}">${hace(p.created_at)}${nivel ? window.RMTiempo.icono(nivel) : ''}</small>
         </div>
         <div class="mt-1"><b>${esc(p.cliente_nombre || 'Cliente')}</b>
           ${tel ? `<span class="small ms-1"><a href="tel:+${esc(tel)}">${esc(tel)}</a> · <a href="${wa}" target="_blank" rel="noopener" title="Abrir WhatsApp"><i class="bi bi-whatsapp"></i></a></span>` : ''}
@@ -98,6 +111,8 @@
   }
 
   function render() {
+    rojosAhora = new Set();
+    amarillosAhora = 0;
     const cols = { por_confirmar: [], en_cocina: [], listo: [], en_camino: [], entregado: [] };
     pedidos.forEach((p) => { if (cols[p.columna]) cols[p.columna].push(p); });
     document.querySelectorAll('.col-d').forEach((sec) => {
@@ -107,6 +122,7 @@
     });
     const activos = pedidos.filter((p) => ['por_confirmar', 'en_cocina', 'listo', 'en_camino'].includes(p.columna)).length;
     const hoy = cols.entregado.reduce((a, p) => a + p.total, 0);
+    if (window.RMTiempo) window.RMTiempo.notificar(rojosAhora, amarillosAhora);
     $('resumen').textContent = `${activos} pedido(s) activo(s) · ${cols.entregado.length} entregado(s) hoy (${money(hoy)})`;
   }
 

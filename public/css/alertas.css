@@ -1,0 +1,10 @@
+/* Alertas por demora (Cocina y Delivery): public/js/alertas-tiempo.js (lo carga solo, no depende de otra hoja de estilos) */
+.t-lento, .cocina-card .meta.t-lento { color: #b45309 !important; font-weight: 700; }
+.t-tarde, .cocina-card .meta.t-tarde { color: #b91c1c !important; font-weight: 800; animation: rm-latido 1.2s ease-in-out infinite; }
+.cocina-card.demora-1, .pcard.demora-1 { box-shadow: 0 0 0 2px #f59e0b88; }
+.cocina-card.demora-2, .pcard.demora-2 { box-shadow: 0 0 0 3px #dc2626cc; background: #fff5f5; }
+.rm-demoras { position: fixed; right: 14px; bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 1080; padding: .55rem .9rem; border-radius: 999px; font-weight: 700; font-size: .9rem; color: #fff; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+.rm-demoras.rojo { background: #dc2626; animation: rm-latido 1.2s ease-in-out infinite; }
+.rm-demoras.amarillo { background: #d97706; }
+@keyframes rm-latido { 0%, 100% { opacity: 1; } 50% { opacity: .6; } }
+@media (prefers-reduced-motion: reduce) { .t-tarde, .rm-demoras.rojo { animation: none; } }

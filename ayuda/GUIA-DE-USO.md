@@ -357,6 +357,8 @@ Arriba ves **contadores**: **Enviados**, **Preparando** y **Listos**. Debajo hay
 
 Cada tarjeta muestra la **mesa** (o **Delivery DEL-N** / **Para llevar LLEVAR-N** si es a domicilio), la **hora**, el **mesero**, los platos con su **cantidad** y las **notas** en destacado (por ejemplo "sin cebolla") — ¡léelas siempre!
 
+**Colores de la hora:** si un pedido lleva mucho tiempo sin atenderse, su hora se pone **amarilla** y luego **roja** (y la tarjeta se resalta; abajo a la derecha sale "N pedidos con demora"). Si ves rojo, **atiéndelo primero**. El administrador puede cambiar los minutos (ver "Alertas de tiempo" en la parte 6).
+
 ### 5.2 Paso a paso: preparar un pedido
 1. En **Enviados**, mira la tarjeta más antigua (los pedidos van **en orden de llegada**).
 2. Toca **Preparar mesa** (o **Preparar pedido** si es delivery). Todos los platos pasan a **Preparando**.
@@ -538,7 +540,7 @@ Cada insumo se mide en **una** unidad: **kg** (kilos) o **lb** (libras), la que 
 Funciona igual que en la parte 4.15. Como administrador, además puedes copiar el enlace público **/reservar** y compartirlo en redes sociales o WhatsApp para que los clientes reserven solos. Revisa a diario las que estén **Por confirmar**.
 
 ### 6.9 Ajustes (Configuración)
-Menú → **Ajustes**. Arriba hay accesos: **Asistentes IA**, **Delivery y agentes**, **QR del menú**, **Pagos con Stripe**, **Pagos con cripto**, **App de clientes**, **Redes y pie**. Y abajo, 3 pestañas: **Negocio**, **Impresión** y **Red**.
+Menú → **Ajustes**. Arriba hay accesos: **Asistentes IA**, **Delivery y agentes**, **QR del menú**, **Pagos con Stripe**, **Pagos con cripto**, **App de clientes**, **Alertas de tiempo**, **Redes y pie**. Y abajo, 3 pestañas: **Negocio**, **Impresión** y **Red**.
 
 #### A) Pestaña Negocio
 Datos que salen en las facturas:
@@ -606,6 +608,21 @@ Esto lo hace el **dueño o administrador** una sola vez. Si no te sientes cómod
 - **Devoluciones:** el sistema **no devuelve dinero solo**. Si hay que devolver un pago cripto, se hace **a mano** desde tu billetera. Si cancelas un pedido de delivery ya pagado, el sistema te lo recuerda.
 - **El precio en BTC cambia** de un momento a otro. El cobro se fija por un rato corto; si el cliente tarda demasiado, el cobro **vence** y se genera uno nuevo (toca **Cancelar cobro** y repite).
 - **Importante (legal):** en la República Dominicana las criptomonedas **no son moneda de curso legal**: el Banco Central no obliga a nadie a aceptarlas y su uso por un comercio privado es **voluntario**. Las ganancias al **vender** criptomonedas se declaran a la **DGII**. Consulta con tu contador cómo registrar estas ventas.
+
+#### D2b) Alertas de tiempo (para que no se quede ningún pedido olvidado)
+En las pantallas de **Cocina** y **Delivery**, cada pedido muestra desde cuándo se envió ("07:56 · hace 12 min"). Cuando **pasa demasiado tiempo sin atenderse**, ese texto cambia de color solo:
+- **Normal (gris):** todo va bien.
+- **⚠️ Amarillo:** ya lleva un rato; hay que apurarse.
+- **🚨 Rojo:** demora seria. El número **late**, la tarjeta se **resalta en rojo** y abajo a la derecha aparece un aviso flotante **"N pedidos con demora"**. En **Cocina** además suena un **pitido** cada vez que un pedido nuevo llega al rojo.
+
+**Para ajustar los tiempos:** **Ajustes → Alertas de tiempo**.
+1. **Cocina:** a los cuántos minutos (desde que el pedido se envía) se pone **amarillo** y a los cuántos **rojo**. Por defecto **10 y 20**.
+2. **Delivery "por confirmar":** a los cuántos minutos se pone **rojo** un pedido que nadie ha confirmado (se pone amarillo a la mitad). Por defecto **5**.
+3. **Sonido:** enciéndelo o apágalo.
+4. Toca **Guardar**. Se aplica en menos de un minuto.
+
+> 💡 Los platos que ya están **listos** y nadie recoge también cuentan el tiempo desde que quedaron listos: así el mesero no deja la comida enfriándose.
+> 💡 El navegador solo deja sonar el pitido si alguien **tocó la pantalla** de cocina al menos una vez desde que la abrió. Toca cualquier parte al abrirla.
 
 #### D3) Redes y pie de página
 Abajo de todas las pantallas del sistema aparece un **pie de página** con tus **redes sociales** (Facebook, Instagram, X, TikTok, YouTube, LinkedIn y Pinterest) y un botón verde de **WhatsApp ("Escríbenos")**. Se configura en **Ajustes → Redes y pie**:
@@ -728,6 +745,8 @@ Si el restaurante lo tiene activado, el cliente puede pagar con **Bitcoin o Ligh
 | **No me deja crear un cliente al facturar** | Es normal para meseros. Usa "Consumidor final" o pide al administrador que lo cree. |
 | **La cocina no recibe un plato** | Falta tocar **Enviar a cocina** (o **Confirmar** en Delivery). |
 | **Un cliente dice que la app no le deja pedir** | Revisa que **Recibir pedidos desde la app** esté encendido (**Ajustes → App de clientes**), que **estés dentro del horario** y que la **zona** y el **pedido mínimo** sean correctos. Si pidió varios pedidos seguidos con el mismo teléfono, el sistema lo frena unos minutos. |
+| **Un pedido se ve en rojo o dice "con demora"** | Es una alerta: lleva demasiado tiempo sin atenderse. En **Cocina**, empieza a prepararlo; en **Delivery**, confírmalo o revísalo. El administrador puede cambiar los tiempos en **Ajustes → Alertas de tiempo**. |
+| **No suena el aviso de demora en Cocina** | El navegador necesita que alguien **toque la pantalla** una vez al abrirla. Toca cualquier parte. También revisa que el sonido esté encendido en **Alertas de tiempo** y que el volumen del equipo esté arriba. |
 | **Un pedido de la app dice "Esperando pago"** | El cliente eligió tarjeta o cripto y aún no ha pagado. No lo confirmes hasta ver **"Pagado"**. Si pasa **1 hora** sin pagar, se cancela solo. |
 | **No aparece la opción "Cripto" al cobrar** | El administrador no ha activado los pagos con cripto o falta algún dato. Revisa **Ajustes → Pagos con cripto**: interruptor encendido, dirección, Store ID y API key guardados. |
 | **"Probar conexión" falla en Pagos con cripto** | Revisa que la **dirección** de tu BTCPay esté bien escrita y abra en el navegador, que el **Store ID** sea el de tu tienda y que la **API key** tenga los 4 permisos. Si dice que no hay tasa de cambio, elige **USD** y escribe la tasa. |

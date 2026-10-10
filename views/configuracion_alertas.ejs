@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('partials/head') %>
+    <title>Alertas de tiempo · Restaurant Martin</title>
+</head>
+<body class="rm">
+    <%- include('partials/navbar') %>
+
+    <main class="rm-page container pb-5" style="max-width: 760px;">
+        <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+            <div>
+                <h1 class="rm-title h3"><i class="bi bi-alarm me-2" style="color:var(--rm-accent)"></i>Alertas de tiempo</h1>
+                <p class="rm-sub">Para que ningún pedido se quede olvidado: cuando pasa cierto tiempo sin atenderse, la hora se pone <b>amarilla</b> y luego <b>roja</b> en las pantallas de <b>Cocina</b> y <b>Delivery</b>, con un sonido de aviso.</p>
+            </div>
+            <a href="/configuracion" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Configuración</a>
+        </div>
+
+        <form id="formAlertas" class="rm-card" autocomplete="off">
+            <div class="rm-card-h"><i class="bi bi-egg-fried"></i><h2>Cocina (desde que el pedido se envía)</h2></div>
+            <div class="rm-card-b">
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <label class="form-label small fw-semibold" for="amarilla">⚠️ Aviso amarillo a los…</label>
+                        <div class="input-group"><input id="amarilla" type="number" min="1" max="240" class="form-control" value="<%= a.amarilla %>"><span class="input-group-text">minutos</span></div>
+                        <div class="form-text">Ya lleva un rato: hay que apurarse.</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label small fw-semibold" for="roja">🚨 Aviso rojo a los…</label>
+                        <div class="input-group"><input id="roja" type="number" min="1" max="240" class="form-control" value="<%= a.roja %>"><span class="input-group-text">minutos</span></div>
+                        <div class="form-text">Demora seria: hay que atenderlo ya.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="rm-card-h border-top"><i class="bi bi-bicycle"></i><h2>Delivery: pedidos "por confirmar"</h2></div>
+            <div class="rm-card-b">
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <label class="form-label small fw-semibold" for="confirmar">🚨 Aviso rojo a los…</label>
+                        <div class="input-group"><input id="confirmar" type="number" min="1" max="240" class="form-control" value="<%= a.confirmar %>"><span class="input-group-text">minutos</span></div>
+                        <div class="form-text">Un cliente espera que lo confirmen. Se pone amarillo a la mitad de este tiempo.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="rm-card-h border-top"><i class="bi bi-volume-up"></i><h2>Sonido</h2></div>
+            <div class="rm-card-b">
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" role="switch" id="sonido" <%= a.sonido ? 'checked' : '' %>>
+                    <label class="form-check-label" for="sonido">Sonar un aviso cuando un pedido llega al rojo (en la pantalla de Cocina)</label>
+                </div>
+                <div class="form-text">El navegador solo deja sonar si alguien tocó la pantalla de cocina al menos una vez desde que la abrió.</div>
+                <div class="mt-3 small">Así se ve en pantalla:
+                    <span class="meta d-inline-block ms-1">07:56 · hace 4 min</span>
+                    <span class="meta t-lento d-inline-block ms-2">07:56 · hace 12 min</span>
+                    <span class="meta t-tarde d-inline-block ms-2">07:56 · hace 25 min</span>
+                </div>
+            </div>
+            <div class="rm-card-b border-top d-flex gap-2 align-items-center">
+                <button type="submit" class="btn btn-rm" id="btnGuardar"><i class="bi bi-save"></i> Guardar</button>
+                <span class="small text-muted">Se aplica en menos de 1 minuto en todas las pantallas.</span>
+            </div>
+        </form>
+    </main>
+
+    <%- include('partials/footer') %>
+
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
+    <script>
+    (function () {
+        const $ = (id) => document.getElementById(id);
+        $('formAlertas').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = $('btnGuardar'); btn.disabled = true;
+            try {
+                const r = await fetch('/configuracion/alertas', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                    body: JSON.stringify({ amarilla: $('amarilla').value, roja: $('roja').value, confirmar: $('confirmar').value, sonido: $('sonido').checked ? '1' : '0' }) });
+                const d = await r.json().catch(() => ({}));
+                if (!r.ok) throw new Error(d.error || 'No se pudo guardar');
+                await Swal.fire({ icon: 'success', title: 'Guardado', timer: 1300, showConfirmButton: false });
+            } catch (err) { Swal.fire({ icon: 'error', title: err.message }); }
+            finally { btn.disabled = false; }
+        });
+    })();
+    </script>
+</body>
+</html>

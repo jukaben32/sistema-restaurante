@@ -436,6 +436,12 @@ ALTER TABLE configuracion_impresion ADD COLUMN IF NOT EXISTS pie_pinterest VARCH
 -- Redes apagadas desde Ajustes (ids separados por coma, ej. 'x,pinterest'); vacío = todas encendidas
 ALTER TABLE configuracion_impresion ADD COLUMN IF NOT EXISTS pie_ocultas VARCHAR(200);
 
+-- Alertas por demora en Cocina y Delivery (Configuración → Alertas de tiempo)
+ALTER TABLE configuracion_impresion ADD COLUMN IF NOT EXISTS alerta_amarilla_min INT NOT NULL DEFAULT 10;
+ALTER TABLE configuracion_impresion ADD COLUMN IF NOT EXISTS alerta_roja_min INT NOT NULL DEFAULT 20;
+ALTER TABLE configuracion_impresion ADD COLUMN IF NOT EXISTS alerta_confirmar_min INT NOT NULL DEFAULT 5;
+ALTER TABLE configuracion_impresion ADD COLUMN IF NOT EXISTS alerta_sonido SMALLINT NOT NULL DEFAULT 1;
+
 -- Avisos: ahora también para pedidos de delivery (sin mesa)
 ALTER TABLE mesa_alertas ALTER COLUMN mesa_id DROP NOT NULL;
 ALTER TABLE mesa_alertas ADD COLUMN IF NOT EXISTS pedido_id INT REFERENCES pedidos(id) ON DELETE CASCADE;

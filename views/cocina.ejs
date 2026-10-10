@@ -180,6 +180,7 @@
       // Relacionado con: public/js/cocina.js y middleware/auth.js (res.locals.user)
       window.__USER_ROLE__ = <%- JSON.stringify((typeof user !== 'undefined' && user && user.rol) ? user.rol : '') %>;
     </script>
+    <script src="/js/alertas-tiempo.js"></script>
     <script src="/js/cocina.js"></script>
 </body>
 </html>

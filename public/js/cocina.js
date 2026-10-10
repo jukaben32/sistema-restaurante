@@ -39,6 +39,18 @@ $(function(){
     return meseroLabel(found || fallback || {});
   }
 
+  // ---- Alertas por demora (public/js/alertas-tiempo.js): se acumulan en cada render()
+  let rojosAhora = new Set();
+  let amarillosAhora = 0;
+  function alerta(clave, ref){
+    const n = (window.RMTiempo && ref) ? window.RMTiempo.nivel(ref, 'cocina') : 0;
+    if(n === 2) rojosAhora.add(clave); else if(n === 1) amarillosAhora++;
+    return n;
+  }
+  const claseT = (n) => (window.RMTiempo ? window.RMTiempo.claseTiempo(n) : '');
+  const claseC = (n) => (window.RMTiempo ? window.RMTiempo.claseTarjeta(n) : '');
+  const iconoT = (n) => (window.RMTiempo ? window.RMTiempo.icono(n) : '');
+
   function timeAgo(date){
     if(!date) return '';
     const diffMs = Date.now() - date.getTime();
@@ -144,6 +156,10 @@ $(function(){
     const ui = estadoUI(it.estado);
     // Para entregados mostramos servido_at; para cola, enviado_at/created_at
     const ref = (it.estado === 'servido' ? (parseDate(it.servido_at) || parseDate(it.updated_at)) : (parseDate(it.enviado_at) || parseDate(it.created_at)));
+    // Demora: en cola/preparando se cuenta desde que se envió; un plato listo, desde que quedó listo (el mesero debe recogerlo)
+    const estLow = String(it.estado || '').toLowerCase();
+    const refAlerta = (estLow === 'enviado' || estLow === 'preparando') ? ref : (estLow === 'listo' ? (parseDate(it.listo_at) || parseDate(it.updated_at) || ref) : null);
+    const nivel = alerta(`i${it.id}`, refAlerta);
     const hora = ref ? ref.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
     const mesa = escapeHtml(it.mesa_numero);
     const producto = escapeHtml(it.producto_nombre);
@@ -167,14 +183,14 @@ $(function(){
       </div>`;
 
     return `
-      <div class="card cocina-card border-start border-4 border-${ui.border}">
+      <div class="card cocina-card border-start border-4 border-${ui.border} ${claseC(nivel)}">
         <div class="card-body">
           <div class="d-flex justify-content-between gap-2">
             <div class="flex-grow-1">
               <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
                 <span class="badge text-bg-dark"><i class="bi bi-grid-3x3-gap me-1"></i>Mesa ${mesa}</span>
                 <span class="badge text-bg-${ui.badge}"><i class="bi ${ui.icon} me-1"></i>${ui.label}</span>
-                <span class="meta">${hora ? `${hora} · ${timeAgo(ref)}` : timeAgo(ref)}</span>
+                <span class="meta ${claseT(nivel)}">${hora ? `${hora} · ${timeAgo(ref)}` : timeAgo(ref)}${iconoT(nivel)}</span>
               </div>
               <div class="meta mb-1"><i class="bi bi-person-badge me-1"></i>Mesero: ${mesero}</div>
               <div class="product-name">${producto}</div>
@@ -198,6 +214,7 @@ $(function(){
     const mesaId = Number(first.mesa_id || 0);
     const ref = parseDate(first.enviado_at) || parseDate(first.created_at);
     const hora = ref ? ref.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+    const nivel = alerta(`m${Number(first.mesa_id || 0)}-${first.pedido_id || ''}-enviado`, ref);
     const canKitchenActions = (userRole !== 'mesero');
     const mesero = meseroLabelFromItems(mesaItems, first);
     const totalLineas = mesaItems.length;
@@ -233,7 +250,7 @@ $(function(){
       : `<i class="bi bi-grid-3x3-gap me-1"></i>Mesa ${mesa}`;
 
     return `
-      <div class="card cocina-card border-start border-4 border-primary">
+      <div class="card cocina-card border-start border-4 border-primary ${claseC(nivel)}">
         <div class="card-body">
           <div class="d-flex justify-content-between gap-2 mb-2">
             <div>
@@ -241,7 +258,7 @@ $(function(){
                 <span class="badge ${esDelivery ? 'text-bg-warning' : 'text-bg-dark'}">${etiquetaMesa}</span>
                 <span class="badge text-bg-primary"><i class="bi bi-send me-1"></i>Enviado</span>
               </div>
-              <div class="meta mt-1">${hora ? `${hora} · ${timeAgo(ref)}` : timeAgo(ref)}</div>
+              <div class="meta mt-1 ${claseT(nivel)}">${hora ? `${hora} · ${timeAgo(ref)}` : timeAgo(ref)}${iconoT(nivel)}</div>
               <div class="meta mt-1"><i class="bi bi-person-badge me-1"></i>Mesero: ${mesero}</div>
             </div>
             <div class="text-end">
@@ -261,6 +278,9 @@ $(function(){
     const mesa = escapeHtml(first.mesa_numero);
     const ref = parseDate(first.preparado_at) || parseDate(first.enviado_at) || parseDate(first.created_at);
     const hora = ref ? ref.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+    // Demora desde que se envió a cocina (el más antiguo del grupo), no desde que empezó a prepararse
+    const refEnvio = mesaItems.map(x => parseDate(x.enviado_at) || parseDate(x.created_at)).filter(Boolean).sort((a, b) => a - b)[0] || ref;
+    const nivel = alerta(`m${Number(first.mesa_id || 0)}-${first.pedido_id || ''}-prep`, refEnvio);
     const canKitchenActions = (userRole !== 'mesero');
     const mesero = meseroLabelFromItems(mesaItems, first);
     const totalLineas = mesaItems.length;
@@ -298,7 +318,7 @@ $(function(){
     }).join('');
 
     return `
-      <div class="card cocina-card border-start border-4 border-warning">
+      <div class="card cocina-card border-start border-4 border-warning ${claseC(nivel)}">
         <div class="card-body">
           <div class="d-flex justify-content-between gap-2 mb-2">
             <div>
@@ -306,7 +326,7 @@ $(function(){
                 <span class="badge text-bg-dark"><i class="bi bi-grid-3x3-gap me-1"></i>Mesa ${mesa}</span>
                 <span class="badge text-bg-warning"><i class="bi bi-fire me-1"></i>Preparando</span>
               </div>
-              <div class="meta mt-1">${hora ? `${hora} · ${timeAgo(ref)}` : timeAgo(ref)}</div>
+              <div class="meta mt-1 ${claseT(nivel)}">${hora ? `${hora} · ${timeAgo(ref)}` : timeAgo(ref)}${iconoT(nivel)}</div>
               <div class="meta mt-1"><i class="bi bi-person-badge me-1"></i>Mesero: ${mesero}</div>
             </div>
             <div class="text-end">
@@ -343,6 +363,8 @@ $(function(){
   }
 
   function render(){
+    rojosAhora = new Set();
+    amarillosAhora = 0;
     const enviadosEl = $('#listaEnviados').empty();
     const preparandoEl = $('#listaPreparando').empty();
     const listosEl = $('#listaListos').empty();
@@ -438,6 +460,9 @@ $(function(){
     // Relacionado con: views/cocina.ejs (pestaña Rechazados)
     rechazadosFiltrados.forEach(it => rechazadosEl.append(cardItem(it)));
     setEmpty('emptyRechazados', rechazadosFiltrados.length === 0);
+
+    // Alertas por demora: resumen flotante y sonido cuando aparece uno nuevo en rojo
+    if(window.RMTiempo) window.RMTiempo.notificar(rojosAhora, amarillosAhora);
   }
 
   // Acciones
