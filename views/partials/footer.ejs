@@ -1,1 +1,26 @@
-<%# Pie de página: intencionalmente vacío (se quitó el pie con enlaces del proyecto original). Las pantallas lo siguen incluyendo, así que aquí se puede poner algo propio si algún día se desea. %>
+<%#
+  Pie de página: agencia, WhatsApp y redes sociales. Se edita en Configuración → Redes y pie de página (services/pie.js).
+  Las redes sin enlace se muestran apagadas ("próximamente") hasta que se escriba su dirección.
+%>
+<% if (typeof pie !== 'undefined' && pie) { %>
+<footer class="bg-dark border-top border-dark-subtle py-3 mt-auto">
+  <div class="container">
+    <div class="d-flex flex-wrap justify-content-center align-items-center gap-3">
+      <% pie.redes.forEach(function (r) { %>
+        <% if (!r.activa) { return; } %>
+        <% if (r.url) { %>
+          <a class="link-light link-opacity-75 link-opacity-100-hover fs-5 p-2" style="line-height:1" href="<%= r.url %>" target="_blank" rel="noopener noreferrer" aria-label="<%= r.nombre %>" title="<%= r.nombre %>"><i class="bi <%= r.icono %>"></i></a>
+        <% } else { %>
+          <span class="text-white-50 fs-5 p-2" style="opacity:.35;cursor:default;line-height:1" aria-label="<%= r.nombre %> (próximamente)" title="<%= r.nombre %> · próximamente"><i class="bi <%= r.icono %>"></i></span>
+        <% } %>
+      <% }); %>
+      <% if (pie.whatsapp) { %>
+        <a class="btn btn-sm btn-success rounded-pill ms-1" href="https://wa.me/<%= pie.whatsapp %>" target="_blank" rel="noopener noreferrer"><i class="bi bi-whatsapp me-1"></i>Escríbenos</a>
+      <% } %>
+    </div>
+    <div class="text-center text-white-50 small mt-2">
+      &copy; <%= new Date().getFullYear() %> <%= pie.negocio %><% if (pie.agencia) { %> · Desarrollado por <span class="fw-semibold text-white"><%= pie.agencia %></span><% } %>
+    </div>
+  </div>
+</footer>
+<% } %>

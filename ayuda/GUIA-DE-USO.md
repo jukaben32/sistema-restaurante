@@ -538,7 +538,7 @@ Cada insumo se mide en **una** unidad: **kg** (kilos) o **lb** (libras), la que 
 Funciona igual que en la parte 4.15. Como administrador, además puedes copiar el enlace público **/reservar** y compartirlo en redes sociales o WhatsApp para que los clientes reserven solos. Revisa a diario las que estén **Por confirmar**.
 
 ### 6.9 Ajustes (Configuración)
-Menú → **Ajustes**. Arriba hay accesos: **Asistentes IA**, **Delivery y agentes**, **QR del menú**, **Pagos con Stripe**, **Pagos con cripto**. Y abajo, 3 pestañas: **Negocio**, **Impresión** y **Red**.
+Menú → **Ajustes**. Arriba hay accesos: **Asistentes IA**, **Delivery y agentes**, **QR del menú**, **Pagos con Stripe**, **Pagos con cripto**, **App de clientes**, **Redes y pie**. Y abajo, 3 pestañas: **Negocio**, **Impresión** y **Red**.
 
 #### A) Pestaña Negocio
 Datos que salen en las facturas:
@@ -606,6 +606,15 @@ Esto lo hace el **dueño o administrador** una sola vez. Si no te sientes cómod
 - **Devoluciones:** el sistema **no devuelve dinero solo**. Si hay que devolver un pago cripto, se hace **a mano** desde tu billetera. Si cancelas un pedido de delivery ya pagado, el sistema te lo recuerda.
 - **El precio en BTC cambia** de un momento a otro. El cobro se fija por un rato corto; si el cliente tarda demasiado, el cobro **vence** y se genera uno nuevo (toca **Cancelar cobro** y repite).
 - **Importante (legal):** en la República Dominicana las criptomonedas **no son moneda de curso legal**: el Banco Central no obliga a nadie a aceptarlas y su uso por un comercio privado es **voluntario**. Las ganancias al **vender** criptomonedas se declaran a la **DGII**. Consulta con tu contador cómo registrar estas ventas.
+
+#### D3) Redes y pie de página
+Abajo de todas las pantallas del sistema aparece un **pie de página** con tus **redes sociales** (Facebook, Instagram, X, TikTok, YouTube, LinkedIn y Pinterest) y un botón verde de **WhatsApp ("Escríbenos")**. Se configura en **Ajustes → Redes y pie**:
+1. **Agencia:** el nombre que sale como "Desarrollado por…" (por ejemplo, Betha IA).
+2. **WhatsApp:** el número con código de país, solo números (por ejemplo `18499192565`). Si lo dejas vacío, el botón no aparece.
+3. **Cada red** tiene un interruptor **Mostrar** y una casilla para su **enlace**. Al tocar su ícono, se abre ese enlace en una pestaña nueva.
+   - Al inicio cada ícono abre la **página principal** de su red. Cuando tengas tus cuentas reales, **pega la dirección completa de tu perfil** (empieza con `https://`).
+   - Si apagas **Mostrar**, esa red **no aparece**. Si la dejas encendida pero **sin enlace**, el ícono se ve **apagado** ("próximamente") y no se puede tocar.
+4. Toca **Guardar**. Los cambios se ven al recargar cualquier pantalla (en menos de un minuto).
 
 #### E) QR del menú por mesa
 **Ajustes → QR del menú** (o botón **QR menú** en Mesas).

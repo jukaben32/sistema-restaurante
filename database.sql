@@ -423,6 +423,19 @@ CREATE UNIQUE INDEX IF NOT EXISTS uk_pedidos_seguimiento ON pedidos(seguimiento_
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS plato_del_dia SMALLINT NOT NULL DEFAULT 0;
 ALTER TABLE configuracion_impresion ADD COLUMN IF NOT EXISTS app_pedidos_activa SMALLINT NOT NULL DEFAULT 1;
 
+-- Pie de página: agencia, WhatsApp y redes sociales (Configuración → Redes y pie de página)
+ALTER TABLE configuracion_impresion ADD COLUMN IF NOT EXISTS pie_agencia VARCHAR(80) DEFAULT 'Betha IA';
+ALTER TABLE configuracion_impresion ADD COLUMN IF NOT EXISTS pie_whatsapp VARCHAR(20) DEFAULT '18499192565';
+ALTER TABLE configuracion_impresion ADD COLUMN IF NOT EXISTS pie_facebook VARCHAR(300) DEFAULT 'https://web.facebook.com/';
+ALTER TABLE configuracion_impresion ADD COLUMN IF NOT EXISTS pie_instagram VARCHAR(300) DEFAULT 'https://www.instagram.com/';
+ALTER TABLE configuracion_impresion ADD COLUMN IF NOT EXISTS pie_x VARCHAR(300) DEFAULT 'https://x.com/';
+ALTER TABLE configuracion_impresion ADD COLUMN IF NOT EXISTS pie_tiktok VARCHAR(300) DEFAULT 'https://www.tiktok.com/';
+ALTER TABLE configuracion_impresion ADD COLUMN IF NOT EXISTS pie_youtube VARCHAR(300) DEFAULT 'https://www.youtube.com/';
+ALTER TABLE configuracion_impresion ADD COLUMN IF NOT EXISTS pie_linkedin VARCHAR(300) DEFAULT 'https://www.linkedin.com/';
+ALTER TABLE configuracion_impresion ADD COLUMN IF NOT EXISTS pie_pinterest VARCHAR(300) DEFAULT 'https://www.pinterest.com/';
+-- Redes apagadas desde Ajustes (ids separados por coma, ej. 'x,pinterest'); vacío = todas encendidas
+ALTER TABLE configuracion_impresion ADD COLUMN IF NOT EXISTS pie_ocultas VARCHAR(200);
+
 -- Avisos: ahora también para pedidos de delivery (sin mesa)
 ALTER TABLE mesa_alertas ALTER COLUMN mesa_id DROP NOT NULL;
 ALTER TABLE mesa_alertas ADD COLUMN IF NOT EXISTS pedido_id INT REFERENCES pedidos(id) ON DELETE CASCADE;

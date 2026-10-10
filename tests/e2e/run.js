@@ -24,7 +24,7 @@ if (process.env.NODE_ENV === 'production') {
     process.exit(1);
 }
 
-const SUITES = ['01-pos-mesas-stripe-reservas', '02-delivery', '03-voz-vapi', '04-whatsapp', '05-ayuda-y-movil', '06-cripto', '07-unidades', '08-datos-demo', '09-app-clientes'];
+const SUITES = ['01-pos-mesas-stripe-reservas', '02-delivery', '03-voz-vapi', '04-whatsapp', '05-ayuda-y-movil', '06-cripto', '07-unidades', '08-datos-demo', '09-app-clientes', '10-pie'];
 const ENTORNO_SIMULADO = {
     EVOLUTION_API_URL: 'http://localhost:4801', EVOLUTION_API_KEY: 'globalkey',
     OPENAI_API_KEY: 'test', OPENAI_BASE_URL: 'http://localhost:4802/v1',

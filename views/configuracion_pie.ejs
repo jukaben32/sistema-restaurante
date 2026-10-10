@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('partials/head') %>
+    <title>Redes y pie de página · Restaurant Martin</title>
+</head>
+<body class="rm">
+    <%- include('partials/navbar') %>
+
+    <main class="rm-page container pb-5" style="max-width: 760px;">
+        <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+            <div>
+                <h1 class="rm-title h3"><i class="bi bi-share me-2" style="color:var(--rm-accent)"></i>Redes y pie de página</h1>
+                <p class="rm-sub">Lo que aparece abajo en todas las pantallas del sistema: tus redes sociales y el botón de WhatsApp. Enciende o apaga cada red con su interruptor <b>Mostrar</b>. Si está encendida pero sin enlace, se ve apagada ("próximamente") hasta que pegues su dirección.</p>
+            </div>
+            <a href="/configuracion" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Configuración</a>
+        </div>
+
+        <form id="formPie" class="rm-card" autocomplete="off">
+            <div class="rm-card-b">
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <label class="form-label small fw-semibold" for="agencia">Agencia (aparece como "Desarrollado por…")</label>
+                        <input id="agencia" class="form-control" maxlength="80" value="<%= datos.agencia %>" placeholder="Ej: Betha IA">
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label small fw-semibold" for="whatsapp"><i class="bi bi-whatsapp text-success me-1"></i>WhatsApp (con código de país)</label>
+                        <input id="whatsapp" class="form-control" inputmode="tel" maxlength="20" value="<%= datos.whatsapp %>" placeholder="18499192565">
+                        <div class="form-text">Se muestra el botón verde "Escríbenos". Déjalo vacío para ocultarlo.</div>
+                    </div>
+                </div>
+                <hr>
+                <div class="row g-3">
+                    <% datos.redes.forEach(function (r) { %>
+                    <div class="col-12 col-sm-6">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label small fw-semibold m-0" for="red_<%= r.id %>"><i class="bi <%= r.icono %> me-1"></i><%= r.nombre %></label>
+                            <div class="form-check form-switch m-0" title="Mostrar <%= r.nombre %> en el pie">
+                                <input class="form-check-input" type="checkbox" role="switch" id="mostrar_<%= r.id %>" data-mostrar="<%= r.id %>" <%= r.activa ? 'checked' : '' %>>
+                                <label class="form-check-label small text-muted" for="mostrar_<%= r.id %>">Mostrar</label>
+                            </div>
+                        </div>
+                        <input id="red_<%= r.id %>" data-red="<%= r.id %>" class="form-control form-control-sm" maxlength="300" value="<%= r.url %>" placeholder="<%= ejemplos[r.id] %>">
+                    </div>
+                    <% }); %>
+                </div>
+                <div class="form-text mt-2">Pega la dirección completa del perfil (empieza con https://). Si la dejas vacía, el ícono aparece apagado; si apagas "Mostrar", no aparece.</div>
+            </div>
+            <div class="rm-card-b border-top d-flex gap-2 align-items-center">
+                <button type="submit" class="btn btn-rm" id="btnGuardar"><i class="bi bi-save"></i> Guardar</button>
+                <span class="small text-muted">Los cambios se ven al recargar cualquier pantalla (en menos de 1 minuto).</span>
+            </div>
+        </form>
+    </main>
+
+    <%- include('partials/footer') %>
+
+    <script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/vendor/sweetalert2/sweetalert2.all.min.js"></script>
+    <script>
+    (function () {
+        const $ = (id) => document.getElementById(id);
+        $('formPie').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const cuerpo = { agencia: $('agencia').value, whatsapp: $('whatsapp').value };
+            document.querySelectorAll('[data-red]').forEach((i) => { cuerpo[i.dataset.red] = i.value; });
+            document.querySelectorAll('[data-mostrar]').forEach((i) => { cuerpo['mostrar_' + i.dataset.mostrar] = i.checked ? '1' : '0'; });
+            const btn = $('btnGuardar'); btn.disabled = true;
+            try {
+                const r = await fetch('/configuracion/redes', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(cuerpo) });
+                const d = await r.json().catch(() => ({}));
+                if (!r.ok) throw new Error(d.error || 'No se pudo guardar');
+                await Swal.fire({ icon: 'success', title: 'Guardado', timer: 1300, showConfirmButton: false });
+                location.reload();
+            } catch (err) { Swal.fire({ icon: 'error', title: err.message }); }
+            finally { btn.disabled = false; }
+        });
+    })();
+    </script>
+</body>
+</html>

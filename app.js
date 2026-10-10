@@ -74,6 +74,8 @@ app.use(session({
 app.use(attachUserToLocals);
 // Ruta actual para marcar la opción activa del menú (views/partials/navbar.ejs)
 app.use((req, res, next) => { res.locals.rutaActual = req.path; next(); });
+// Pie de página (agencia, WhatsApp y redes): services/pie.js
+app.use(require('./services/pie').middleware);
 
 // Configuración de archivos estáticos
 // (en Vercel, public/ lo sirve la CDN directamente; esto cubre servidor propio y desarrollo)
@@ -156,6 +158,7 @@ app.use('/api/demo', requireRole('administrador'));
 app.use(require('./routes/demo'));
 
 app.use('/configuracion/app-clientes', requireRole('administrador'), pedirRoutes.admin);
+app.use('/configuracion/redes', requireRole('administrador'), require('./routes/pie'));
 
 // Cripto (BTCPay Server): cobros (personal) y configuración (admin)
 const criptoRoutes = require('./routes/cripto');
