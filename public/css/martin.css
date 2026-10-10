@@ -101,3 +101,12 @@ body.rm { background: var(--rm-bg); color: var(--rm-ink); min-height: 100vh; dis
 @media (prefers-reduced-motion: reduce) {
   .rm-alert, .rm-pulse, .rm-bar .b { animation: none; transition: none; }
 }
+
+/* Pila de avisos compacta (public/js/alertas-mesas.js) */
+.rm-alerts-mas { align-self: flex-end; border: 0; border-radius: 999px; background: var(--rm-ink); color: #fff; font-size: .8rem; font-weight: 700; padding: .35rem .8rem; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+@media (max-width: 576px) {
+  .rm-alert { padding: .5rem .6rem; gap: .5rem; }
+  .rm-alert .ic { width: 30px; height: 30px; }
+  .rm-alert .tx { font-size: .82rem; }
+  .rm-alert .tx small:not(:last-child) { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+}

@@ -57,6 +57,32 @@ const check = (c, m) => { if (!c) fallos++; console.log(`${c ? 'OK  ' : 'FAIL'} 
   // Dejar los valores por defecto
   await call(admin, 'POST', '/configuracion/alertas', { amarilla: 10, roja: 20, confirmar: 5, sonido: '1' });
 
+  console.log('\n--- El mesero ve el estado de cocina de cada mesa ---');
+  const prod = (await call(admin, 'POST', '/productos', { codigo: 'EST1', nombre: 'Plato estado', precio_unidad: 300, en_menu: 1, disponible: 1 }, { expect: 201 })).data.id;
+  const [mi] = await db.query(`INSERT INTO mesas (numero, descripcion) VALUES ('EST-1', 'Mesa estado')`);
+  const mesaDe = async () => (await call(mesero, 'GET', '/api/mesas/listar')).data.find((m) => m.id === mi.insertId);
+  const ped = (await call(mesero, 'POST', '/api/mesas/abrir', { mesa_id: mi.insertId })).data.pedido;
+  const it1 = (await call(mesero, 'POST', `/api/mesas/pedidos/${ped.id}/items`, { producto_id: prod, cantidad: 1, precio: 300 }, { expect: 201 })).data.id;
+  const it2 = (await call(mesero, 'POST', `/api/mesas/pedidos/${ped.id}/items`, { producto_id: prod, cantidad: 2, precio: 300 }, { expect: 201 })).data.id;
+  let m = await mesaDe();
+  check(Number(m.pendientes) === 2 && Number(m.en_cola) === 0, 'antes de enviar: 2 platos "por enviar"');
+  await call(mesero, 'PUT', `/api/mesas/items/${it1}/enviar`, {});
+  await call(mesero, 'PUT', `/api/mesas/items/${it2}/enviar`, {});
+  m = await mesaDe();
+  check(Number(m.en_cola) === 2 && m.primer_envio, 'enviados: 2 "en cola", con la hora del primer envío');
+  await call(cocinero, 'PUT', `/api/cocina/item/${it1}/estado`, { estado: 'preparando' });
+  m = await mesaDe();
+  check(Number(m.preparando) === 1 && Number(m.en_cola) === 1, 'la cocina empieza uno: 1 "preparando" y 1 "en cola"');
+  await call(cocinero, 'PUT', `/api/cocina/item/${it1}/estado`, { estado: 'listo' });
+  m = await mesaDe();
+  check(Number(m.listos) === 1 && m.primer_listo, 'la cocina lo marca listo: la mesa muestra 1 "listo" (aquí suena el aviso al mesero)');
+  await call(mesero, 'PUT', `/api/mesas/items/${it2}/estado`, { estado: 'servido' }, { expect: 400 });
+  await call(mesero, 'PUT', `/api/mesas/${mi.insertId}/entregar`, {});
+  m = await mesaDe();
+  check(Number(m.listos) === 0 && Number(m.en_cola) === 1, 'al entregar, el listo desaparece y queda el que sigue en cola');
+  const pag = await call(mesero, 'GET', '/mesas', undefined, { expect: 200, headers: { Accept: 'text/html' } });
+  check(pag.text.includes('cocina-estado') && pag.text.includes('/css/estado-cocina.css') && pag.text.includes('/js/alertas-tiempo.js') && pag.text.includes('pedidoProgreso'), 'la pantalla de Mesas trae el estado de cocina, la barra de avance y los avisos');
+
   await db.end();
   console.log(fallos ? `\n✖ ${fallos} comprobación(es) fallaron` : '\n✔ Suite de alertas de tiempo: todo correcto');
   process.exit(fallos ? 1 : 0);

@@ -6,6 +6,22 @@
   cont.setAttribute('aria-live', 'polite');
   document.body.appendChild(cont);
 
+  // Los avisos se apilan compactos: se ven los más recientes y el resto queda tras "+N avisos más"
+  let expandido = false;
+  const mas = document.createElement('button');
+  mas.type = 'button';
+  mas.className = 'rm-alerts-mas d-none';
+  mas.addEventListener('click', () => { expandido = !expandido; ordenar(); });
+  function ordenar() {
+    const lista = [...cont.querySelectorAll('[data-alerta]')];
+    const visibles = window.matchMedia('(max-width: 576px)').matches ? 1 : 2;
+    lista.forEach((el, i) => el.classList.toggle('d-none', !expandido && i >= visibles));
+    const ocultos = lista.length - visibles;
+    mas.classList.toggle('d-none', ocultos <= 0);
+    mas.textContent = expandido ? 'Ver menos' : `+${ocultos} aviso${ocultos > 1 ? 's' : ''} más`;
+    cont.appendChild(mas);
+  }
+
   const vistos = new Set();
   let primeraCarga = true;
   const TIPOS = {
@@ -62,6 +78,7 @@
         ${a.es_pedido && !/\/delivery$/.test(location.pathname) ? '<a class="btn btn-sm btn-outline-light" href="/delivery">Ver</a>' : ''}
         <button class="btn btn-sm btn-light" data-atender="${a.id}">Atender</button>`;
     });
+    ordenar();
     if (nuevos > 0 && !primeraCarga) beep();
     primeraCarga = false;
   }
@@ -79,6 +96,7 @@
     b.disabled = true;
     await fetch(`/api/mesa-alertas/${b.dataset.atender}/atender`, { method: 'POST', headers: { Accept: 'application/json' } }).catch(() => {});
     b.closest('[data-alerta]')?.remove();
+    ordenar();
     // Refresca el panel de mesas si existe (pedido nuevo desde el menú)
     if (typeof window.refreshMesas === 'function') window.refreshMesas();
   });

@@ -1,0 +1,39 @@
+/* Estado de cocina visible para el mesero (tarjetas de mesa y panel del pedido).
+   Relacionado con: public/js/mesas.js, views/mesas.ejs, routes/mesas.js (/api/mesas/listar) */
+.ec-chip { display: inline-flex; align-items: center; gap: .3rem; font-size: .74rem; font-weight: 700; padding: .2rem .55rem; border-radius: 999px; line-height: 1.2; white-space: nowrap; }
+.ec-chip i { font-size: .8em; }
+.ec-pend  { background: #eef2f7; color: #475569; }
+.ec-cola  { background: #e0e7ff; color: #3730a3; }
+.ec-prep  { background: #fef3c7; color: #92400e; }
+.ec-listo { background: #dcfce7; color: #166534; box-shadow: 0 0 0 1px #86efac inset; }
+.ec-serv  { background: #f1f5f9; color: #475569; }
+.ec-canc  { background: #fee2e2; color: #991b1b; }
+.ec-chip.t-lento { background: #ffedd5; }
+.ec-chip.t-tarde { background: #fee2e2; }
+
+/* Tarjeta de mesa */
+.cocina-estado { display: flex; flex-wrap: wrap; gap: .3rem; min-height: 1.5rem; margin: -.4rem 0 .75rem; }
+.mesa-card.mesa-lista { box-shadow: 0 0 0 3px #22c55e99, 0 6px 18px rgba(34,197,94,.18); }
+.mesa-card.mesa-lista .ec-listo { animation: ec-brillo 1.6s ease-in-out infinite; }
+
+/* Panel del pedido: barra de avance y resumen */
+.ec-progreso { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 12px; padding: .55rem .7rem; }
+.ec-barra { display: flex; height: 8px; border-radius: 999px; overflow: hidden; background: #e5e7eb; margin: .35rem 0 .45rem; }
+.ec-barra span { display: block; height: 100%; transition: width .35s ease; }
+.ec-barra .b-pend { background: #94a3b8; }
+.ec-barra .b-cola { background: #6366f1; }
+.ec-barra .b-prep { background: #f59e0b; }
+.ec-barra .b-listo { background: #22c55e; }
+.ec-barra .b-serv { background: #475569; }
+.ec-leyenda { display: flex; flex-wrap: wrap; gap: .3rem; }
+.ec-fila-lista td { background: #f0fdf4 !important; }
+
+@keyframes ec-brillo { 0%, 100% { box-shadow: 0 0 0 1px #86efac inset; } 50% { box-shadow: 0 0 0 1px #86efac inset, 0 0 0 4px #22c55e40; } }
+@media (prefers-reduced-motion: reduce) { .mesa-card.mesa-lista .ec-listo, .ec-barra span { animation: none; transition: none; } }
+
+/* Aviso "plato listo" para el mesero (arriba a la derecha; no interrumpe ventanas abiertas) */
+.ec-avisos { position: fixed; top: calc(12px + env(safe-area-inset-top)); right: 12px; z-index: 2000; display: flex; flex-direction: column; gap: .5rem; width: min(340px, calc(100vw - 24px)); }
+.ec-aviso { display: flex; align-items: center; gap: .6rem; background: #15803d; color: #fff; border-radius: 14px; padding: .65rem .75rem; box-shadow: 0 10px 28px rgba(21,128,61,.35); animation: ec-entra .25s ease-out; }
+.ec-aviso > .bi { font-size: 1.3rem; }
+@keyframes ec-entra { from { transform: translateY(-8px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ec-aviso { animation: none; } }

@@ -7,6 +7,7 @@
     <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.css">
     <link rel="stylesheet" href="/css/martin.css">
+    <link rel="stylesheet" href="/css/estado-cocina.css">
     <link rel="manifest" href="/manifest.webmanifest">
     <meta name="theme-color" content="#2c3e50">
     <style>
@@ -75,6 +76,7 @@
                             </span>
                             <h5 class="card-title mb-1">Mesa <%= m.numero %></h5>
                             <p class="text-muted small mb-3"><%= m.descripcion || '' %></p>
+                            <div class="cocina-estado" aria-live="polite"></div>
                             <div class="d-grid gap-2">
                                 <button class="btn btn-outline-secondary btn-sm btnLiberarMesa">
                                     <i class="bi bi-unlock me-1"></i> Liberar mesa
@@ -131,6 +133,7 @@
                 </button>
                 <button id="btnLiberarMesaHeader" class="btn btn-outline-secondary btn-sm"><i class="bi bi-unlock"></i> Liberar mesa</button>
             </div>
+            <div id="pedidoProgreso" class="mb-2" aria-live="polite"></div>
             <div class="table-responsive flex-grow-1">
                 <table class="table table-sm">
                     <thead class="table-light">
@@ -173,6 +176,7 @@
     </script>
     <script src="/js/stripe-cobro.js"></script>
     <script src="/js/cripto-cobro.js"></script>
+    <script src="/js/alertas-tiempo.js"></script>
     <script src="/js/mesas.js"></script>
     <script src="/js/alertas-mesas.js"></script>
 </body>

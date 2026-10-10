@@ -295,6 +295,46 @@ $(function() {
     const e = String(estado || '').toLowerCase();
     return ['cancelado','rechazado'].includes(e);
   }
+  // Estado de cada plato tal como lo marca la cocina (lo ve el mesero en vivo)
+  const ESTADO_COCINA = {
+    pendiente:  { txt: 'Por enviar', icono: 'bi-pencil', cls: 'ec-pend' },
+    enviado:    { txt: 'En cola', icono: 'bi-send', cls: 'ec-cola' },
+    preparando: { txt: 'Preparando', icono: 'bi-fire', cls: 'ec-prep' },
+    listo:      { txt: '¡Listo!', icono: 'bi-bell-fill', cls: 'ec-listo' },
+    servido:    { txt: 'Servido', icono: 'bi-check2-all', cls: 'ec-serv' },
+    cancelado:  { txt: 'Cancelado', icono: 'bi-x-circle', cls: 'ec-canc' },
+    rechazado:  { txt: 'Rechazado', icono: 'bi-x-circle', cls: 'ec-canc' }
+  };
+  const chipEstado = (e, extra = '') => {
+    const s = ESTADO_COCINA[e] || { txt: e || 'sin estado', icono: 'bi-question-circle', cls: 'ec-pend' };
+    return `<span class="ec-chip ${s.cls} ${extra}"><i class="bi ${s.icono}"></i>${escapeHtml(s.txt)}</span>`;
+  };
+
+  // Resumen arriba de la lista: barra de avance + cuántos platos hay en cada estado
+  function renderProgreso(){
+    const cont = document.getElementById('pedidoProgreso');
+    if(!cont) return;
+    const activos = (items || []).filter(it => !isItemExcluidoDeTotal(it.estado));
+    const enCocina = activos.filter(it => String(it.estado || '').toLowerCase() !== 'pendiente');
+    if(enCocina.length === 0){ cont.innerHTML = ''; return; }
+    const cuenta = { pendiente: 0, enviado: 0, preparando: 0, listo: 0, servido: 0 };
+    activos.forEach(it => { const e = String(it.estado || '').toLowerCase(); if(cuenta[e] !== undefined) cuenta[e]++; });
+    const total = activos.length || 1;
+    const seg = (n, cls) => n ? `<span class="${cls}" style="width:${(n / total) * 100}%"></span>` : '';
+    const leyenda = ['listo', 'preparando', 'enviado', 'pendiente', 'servido']
+      .filter(e => cuenta[e] > 0)
+      .map(e => chipEstado(e).replace(`</i>`, `</i>${cuenta[e]} · `)).join('');
+    cont.innerHTML = `
+      <div class="ec-progreso">
+        <div class="d-flex justify-content-between align-items-center gap-2">
+          <span class="small fw-semibold"><i class="bi bi-egg-fried me-1"></i>Cocina: ${cuenta.servido}/${total} servido${total > 1 ? 's' : ''}</span>
+          ${cuenta.listo > 0 ? `<button type="button" class="btn btn-success btn-sm py-0" data-action="entregar-listos"><i class="bi bi-box-seam me-1"></i>Entregar ${cuenta.listo} listo${cuenta.listo > 1 ? 's' : ''}</button>` : ''}
+        </div>
+        <div class="ec-barra" aria-hidden="true">${seg(cuenta.servido, 'b-serv')}${seg(cuenta.listo, 'b-listo')}${seg(cuenta.preparando, 'b-prep')}${seg(cuenta.enviado, 'b-cola')}${seg(cuenta.pendiente, 'b-pend')}</div>
+        <div class="ec-leyenda">${leyenda}</div>
+      </div>`;
+  }
+
   function renderItems(){
     const tbody = $('#tbodyItems');
     tbody.empty();
@@ -313,13 +353,11 @@ $(function() {
       const canEdit = estadoItem === 'pendiente';
       const canCancelar = isItemAnulable(estadoItem);
       tbody.append(`
-        <tr>
+        <tr class="${estadoItem === 'listo' ? 'ec-fila-lista' : ''}">
           <td>
             <div>${nombre}</div>
             ${notaHtml}
-            <div class="small mt-1">
-              <span class="badge text-bg-${canEdit ? 'secondary' : 'light'}">${escapeHtml(estadoItem || 'sin estado')}</span>
-            </div>
+            <div class="small mt-1">${chipEstado(estadoItem)}</div>
           </td>
           <td class="text-end">${cantidad}</td>
           <td class="text-end">${formatear(precio)}</td>
@@ -328,6 +366,7 @@ $(function() {
             <div class="btn-group btn-group-sm" role="group" aria-label="acciones item">
               ${canEdit ? `<button class="btn btn-outline-primary" data-action="editar-item" data-idx="${idx}" title="Editar item"><i class="bi bi-pencil-square"></i></button>` : ''}
               ${canEdit ? `<button class="btn btn-outline-danger" data-action="eliminar-item" data-idx="${idx}" title="Eliminar item"><i class="bi bi-trash"></i></button>` : ''}
+              ${estadoItem === 'listo' ? `<button class="btn btn-success" data-action="servido-item" data-idx="${idx}" title="Marcar como entregado al cliente"><i class="bi bi-box-seam"></i></button>` : ''}
               ${canCancelar ? `<button class="btn btn-outline-warning" data-action="cancelar-item" data-idx="${idx}" title="Cancelar item"><i class="bi bi-x-octagon"></i></button>` : ''}
             </div>
           </td>
@@ -335,6 +374,8 @@ $(function() {
       `);
     });
     $('#totalPedido').text(formatear(total));
+    renderProgreso();
+    firmaItems = firmaDe(items);
   }
 
   // Cargar pedido por mesa
@@ -361,6 +402,42 @@ $(function() {
     items = data.items || [];
     renderItems();
   }
+
+  // Firma de los platos: si la cocina cambió algún estado, se vuelve a dibujar el panel (si no, no se toca)
+  let firmaItems = '';
+  const firmaDe = (lista) => (lista || []).map(it => `${it.id}:${it.estado}:${it.cantidad}`).join('|');
+  async function refrescarPedidoAbierto(){
+    const abierto = document.getElementById('canvasPedido')?.classList.contains('show');
+    if(!abierto || !pedidoActual || (window.Swal && Swal.isVisible())) return;
+    try {
+      const resp = await fetch(`/api/mesas/pedidos/${pedidoActual.id}`, { cache: 'no-store' });
+      if(!resp.ok) return;
+      const data = await resp.json();
+      if(firmaDe(data.items) === firmaItems) return;
+      items = data.items || [];
+      renderItems();
+    } catch (_) { /* sin red: se reintenta en el próximo ciclo */ }
+  }
+
+  // Entregar al cliente: un plato o todos los listos de la mesa
+  async function marcarEntregado(url, body){
+    const resp = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+    const data = await resp.json().catch(() => ({}));
+    if(!resp.ok) throw new Error(data.error || 'No se pudo marcar como entregado');
+    await cargarPedido(pedidoActual.id);
+    refreshMesas();
+  }
+  $(document).on('click', '[data-action="servido-item"]', async function(){
+    const it = items[Number(this.dataset.idx)];
+    if(!it) return;
+    try { await marcarEntregado(`/api/mesas/items/${encodeURIComponent(it.id)}/estado`, { estado: 'servido' }); }
+    catch (err) { Swal.fire({ icon: 'error', title: err.message }); }
+  });
+  $(document).on('click', '[data-action="entregar-listos"]', async function(){
+    if(!pedidoActual) return;
+    try { await marcarEntregado(`/api/mesas/${encodeURIComponent(pedidoActual.mesa_id)}/entregar`); }
+    catch (err) { Swal.fire({ icon: 'error', title: err.message }); }
+  });
 
   // Buscar productos
   let to;
@@ -878,6 +955,52 @@ $(function() {
   $('#btnMoverMesaHeader').on('click', handleMoverMesa);
 
   // ====== Estado en vivo de mesas (sin recargar) ======
+  // Cuántos platos listos tenía cada mesa en la consulta anterior (para avisar solo cuando aparecen nuevos)
+  const listosAntes = new Map();
+  let primeraConsultaMesas = true;
+  function avisarListos(mesa, nuevos){
+    if (window.RMTiempo && window.RMTiempo.campana) window.RMTiempo.campana();
+    if (navigator.vibrate) { try { navigator.vibrate([120, 80, 120]); } catch (_) { /* noop */ } }
+    // Aviso propio (no usa SweetAlert): así no cierra una ventana de cobro o de cliente que el mesero tenga abierta
+    let caja = document.getElementById('avisosListos');
+    if (!caja) {
+      caja = document.createElement('div');
+      caja.id = 'avisosListos';
+      caja.className = 'ec-avisos';
+      caja.setAttribute('role', 'status');
+      caja.setAttribute('aria-live', 'assertive');
+      document.body.appendChild(caja);
+    }
+    const aviso = document.createElement('div');
+    aviso.className = 'ec-aviso';
+    aviso.innerHTML = `<i class="bi bi-bell-fill"></i>
+      <div class="flex-grow-1"><strong>Mesa ${escapeHtml(mesa.numero)}</strong><div class="small">${nuevos} plato${nuevos > 1 ? 's' : ''} listo${nuevos > 1 ? 's' : ''} para servir</div></div>
+      <button type="button" class="btn btn-light btn-sm fw-semibold">Ver</button>
+      <button type="button" class="btn-close btn-close-white" aria-label="Cerrar"></button>`;
+    const cerrar = () => aviso.remove();
+    aviso.querySelector('.btn-light').addEventListener('click', () => { cerrar(); abrirPedido(mesa.id, mesa.numero); });
+    aviso.querySelector('.btn-close').addEventListener('click', cerrar);
+    caja.prepend(aviso);
+    setTimeout(cerrar, 12000);
+  }
+  function pintarEstadoCocina(card, m){
+    const cont = card.querySelector('.cocina-estado');
+    if (!cont) return;
+    const n = (v) => Number(v || 0);
+    const chips = [];
+    if (n(m.listos)) chips.push(`<span class="ec-chip ec-listo"><i class="bi bi-bell-fill"></i>${n(m.listos)} listo${n(m.listos) > 1 ? 's' : ''}</span>`);
+    const enCocina = n(m.en_cola) + n(m.preparando);
+    if (enCocina) {
+      const nivel = (window.RMTiempo && m.primer_envio) ? window.RMTiempo.nivel(m.primer_envio, 'cocina') : 0;
+      const tiempo = nivel && window.RMTiempo ? window.RMTiempo.claseTiempo(nivel) : '';
+      if (n(m.preparando)) chips.push(`<span class="ec-chip ec-prep ${tiempo}"><i class="bi bi-fire"></i>${n(m.preparando)} preparando</span>`);
+      if (n(m.en_cola)) chips.push(`<span class="ec-chip ec-cola ${tiempo}"><i class="bi bi-send"></i>${n(m.en_cola)} en cola</span>`);
+    }
+    if (n(m.pendientes)) chips.push(`<span class="ec-chip ec-pend"><i class="bi bi-pencil"></i>${n(m.pendientes)} por enviar</span>`);
+    cont.innerHTML = chips.join('');
+    card.classList.toggle('mesa-lista', n(m.listos) > 0);
+  }
+
   async function refreshMesas() {
     try {
       const resp = await fetch('/api/mesas/listar');
@@ -885,7 +1008,13 @@ $(function() {
       if (!Array.isArray(mesas)) return;
       mesas.forEach(m => {
         const card = document.querySelector(`.mesa-card[data-mesa-id="${m.id}"]`);
+        // Aviso de "plato listo": solo cuando aumentan los listos de una mesa (no al abrir la pantalla)
+        const listos = Number(m.listos || 0);
+        const antes = listosAntes.get(m.id) || 0;
+        if (!primeraConsultaMesas && listos > antes) avisarListos(m, listos - antes);
+        listosAntes.set(m.id, listos);
         if (!card) return;
+        pintarEstadoCocina(card, m);
         const badge = card.querySelector('.estado-badge');
         if (badge) {
           badge.textContent = m.estado;
@@ -893,6 +1022,9 @@ $(function() {
           badge.classList.add(m.estado === 'libre' ? 'bg-success' : (m.estado === 'ocupada' ? 'bg-warning' : 'bg-secondary'));
         }
       });
+      primeraConsultaMesas = false;
+      // Si el panel del pedido está abierto, también se actualizan los estados de sus platos
+      refrescarPedidoAbierto();
     } catch (_) { /* ignorar errores de red */ }
   }
 

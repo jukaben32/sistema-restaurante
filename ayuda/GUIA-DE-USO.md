@@ -250,6 +250,27 @@ Funciona igual que Stripe, pero el cliente paga con una **billetera de criptomon
 
 > 💡 Un mismo pago cripto **no puede usarse dos veces**. Si te piden **devolver** un pago cripto, se hace **a mano desde tu BTCPay**: el sistema no devuelve dinero solo.
 
+### 4.9b Ver en qué va cada pedido (cocina en vivo)
+No hace falta ir a preguntar a la cocina: la pantalla de **Mesas** te lo muestra sola y se actualiza cada pocos segundos.
+
+**En cada mesa** aparecen etiquetas de colores:
+| Etiqueta | Qué significa |
+|---|---|
+| ✏️ **Por enviar** (gris) | Lo anotaste pero aún no lo mandaste a cocina. |
+| 📤 **En cola** (morado) | La cocina ya lo tiene, pero todavía no empieza. |
+| 🔥 **Preparando** (amarillo) | La cocina lo está haciendo. |
+| 🔔 **Listo** (verde) | ¡Ya está! Ve a recogerlo. La mesa se **resalta en verde**. |
+
+Si una etiqueta de "en cola" o "preparando" se pone **roja**, ese pedido lleva demasiado tiempo: avisa en cocina (ver "Alertas de tiempo").
+
+**Cuando un plato queda listo** te llega un **aviso verde arriba a la derecha** ("Mesa 5: 1 plato listo para servir") con un **sonido** y, en el celular, una **vibración**. Toca **Ver** para abrir el pedido de esa mesa. El aviso **no cierra** lo que estés haciendo (por ejemplo, un cobro).
+> 💡 Para que suene, **toca la pantalla una vez** después de abrir Mesas (el navegador lo exige).
+
+**Dentro del pedido** (Abrir / Continuar pedido):
+- Arriba ves una **barra de avance** con cuántos platos van servidos, listos, preparándose o en cola.
+- Cada plato muestra su **estado en color**. Los listos se ven con fondo verde.
+- Cuando entregues a la mesa, toca el botón verde 📦 del plato, o **"Entregar N listos"** arriba para marcarlos todos de una vez.
+
 ### 4.10 La factura: imprimir y enviar por WhatsApp
 En la pantalla de la factura verás:
 - **Imprimir Factura**: abre la impresión de tu equipo (puede ser una impresora térmica).
@@ -746,6 +767,7 @@ Si el restaurante lo tiene activado, el cliente puede pagar con **Bitcoin o Ligh
 | **La cocina no recibe un plato** | Falta tocar **Enviar a cocina** (o **Confirmar** en Delivery). |
 | **Un cliente dice que la app no le deja pedir** | Revisa que **Recibir pedidos desde la app** esté encendido (**Ajustes → App de clientes**), que **estés dentro del horario** y que la **zona** y el **pedido mínimo** sean correctos. Si pidió varios pedidos seguidos con el mismo teléfono, el sistema lo frena unos minutos. |
 | **Un pedido se ve en rojo o dice "con demora"** | Es una alerta: lleva demasiado tiempo sin atenderse. En **Cocina**, empieza a prepararlo; en **Delivery**, confírmalo o revísalo. El administrador puede cambiar los tiempos en **Ajustes → Alertas de tiempo**. |
+| **No me llegó el aviso de "plato listo"** | Debes estar en la pantalla de **Mesas** y haber **tocado la pantalla una vez** después de abrirla (para el sonido). El estado igual se ve en la mesa: etiqueta verde **Listo** y la mesa resaltada. |
 | **No suena el aviso de demora en Cocina** | El navegador necesita que alguien **toque la pantalla** una vez al abrirla. Toca cualquier parte. También revisa que el sonido esté encendido en **Alertas de tiempo** y que el volumen del equipo esté arriba. |
 | **Un pedido de la app dice "Esperando pago"** | El cliente eligió tarjeta o cripto y aún no ha pagado. No lo confirmes hasta ver **"Pagado"**. Si pasa **1 hora** sin pagar, se cancela solo. |
 | **No aparece la opción "Cripto" al cobrar** | El administrador no ha activado los pagos con cripto o falta algún dato. Revisa **Ajustes → Pagos con cripto**: interruptor encendido, dirección, Store ID y API key guardados. |

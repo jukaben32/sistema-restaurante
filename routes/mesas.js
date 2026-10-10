@@ -273,8 +273,21 @@ router.get('/listar', async (req, res) => {
                       AND i2.estado NOT IN ('cancelado','rechazado')
                 ) > 0 THEN 'ocupada'
                 ELSE 'libre'
-            END AS estado
+            END AS estado,
+            -- Estado de cocina de la mesa (para que el mesero vea qué está en cola, preparándose o listo)
+            k.pendientes, k.en_cola, k.preparando, k.listos, k.primer_envio, k.primer_listo
             FROM mesas m
+            LEFT JOIN LATERAL (
+                SELECT COUNT(*) FILTER (WHERE i.estado = 'pendiente') AS pendientes,
+                       COUNT(*) FILTER (WHERE i.estado = 'enviado') AS en_cola,
+                       COUNT(*) FILTER (WHERE i.estado = 'preparando') AS preparando,
+                       COUNT(*) FILTER (WHERE i.estado = 'listo') AS listos,
+                       MIN(COALESCE(i.enviado_at, i.created_at)) FILTER (WHERE i.estado IN ('enviado','preparando')) AS primer_envio,
+                       MIN(COALESCE(i.listo_at, i.updated_at)) FILTER (WHERE i.estado = 'listo') AS primer_listo
+                FROM pedido_items i
+                JOIN pedidos pk ON pk.id = i.pedido_id
+                WHERE pk.mesa_id = m.id AND pk.estado NOT IN ('cerrado','cancelado','rechazado')
+            ) k ON true
             ORDER BY m.numero
         `);
         res.json(mesas);
