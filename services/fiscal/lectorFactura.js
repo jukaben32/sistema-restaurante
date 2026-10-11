@@ -63,7 +63,7 @@ async function leerFactura(dataUrl, { proveedores = [] } = {}) {
     return {
         proveedor_id: prov ? prov.id : null, rnc_proveedor: rnc || null, nombre_proveedor: j.nombre_proveedor || null, ncf, fecha_comprobante: fecha,
         monto_bienes: bienes, monto_servicios: servicios, itbis_facturado: itbis, propina, total,
-        forma_pago: FORMAS[j.forma_pago] || '01', confianza: Number(j.confianza) || null, avisos
+        forma_pago: FORMAS[j.forma_pago] || '01', confianza: Number(j.confianza) || null, avisos, crudo: j
     };
 }
 

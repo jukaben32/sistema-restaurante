@@ -147,6 +147,8 @@
       $('cBienes').value = d.monto_bienes; $('cServ').value = d.monto_servicios; $('cItbis').value = d.itbis_facturado; $('cPropina').value = d.propina;
       $('cForma').value = d.forma_pago;
       $('fotoEstado').textContent = 'Datos leídos. Revísalos y guarda.';
+      $('fotoEstado').innerHTML = `Datos leídos. Revísalos y guarda. <a href="#" id="verCrudo">Ver lectura</a><pre id="crudo" class="d-none small mb-0">${esc(JSON.stringify(d.crudo, null, 1))}</pre>`;
+      $('verCrudo').addEventListener('click', (e) => { e.preventDefault(); $('crudo').classList.toggle('d-none'); });
       if (d.avisos.length) { $('fotoAvisos').innerHTML = d.avisos.map((a) => `<div><i class="bi bi-exclamation-triangle"></i> ${esc(a)}</div>`).join(''); $('fotoAvisos').classList.remove('d-none'); }
     } catch (err) { $('fotoEstado').textContent = 'No se pudo leer la foto.'; falla(err); }
     finally { $('btnFoto').disabled = false; $('cFoto').value = ''; }
