@@ -101,10 +101,48 @@
     }
     $('formCompra').reset();
     $('entradas').innerHTML = '';
+    $('fotoAvisos').classList.add('d-none');
+    $('fotoEstado').textContent = 'Toma una foto y se llenan los datos. Revísalos antes de guardar.';
     $('cFecha').value = new Date().toISOString().slice(0, 10);
     $('cTipo').innerHTML = Object.entries(cat.tipos).sort().map(([k, v]) => `<option value="${k}" ${k === '09' ? 'selected' : ''}>${k} · ${esc(v)}</option>`).join('');
     $('cForma').innerHTML = Object.entries(cat.formas).sort().map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('');
     modalCompra.show();
+  });
+
+  // Reduce la foto a ~1600 px JPEG para que suba rápido y quepa en el límite del servidor
+  function reducir(file) {
+    return new Promise((ok, mal) => {
+      const img = new Image();
+      img.onload = () => {
+        const k = Math.min(1, 1600 / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(img.src);
+        ok(c.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = () => mal(new Error('No se pudo abrir la imagen.'));
+      img.src = URL.createObjectURL(file);
+    });
+  }
+  $('btnFoto').addEventListener('click', () => $('cFoto').click());
+  $('cFoto').addEventListener('change', async () => {
+    const f = $('cFoto').files[0];
+    if (!f) return;
+    $('btnFoto').disabled = true;
+    $('fotoEstado').textContent = 'Leyendo la factura…';
+    $('fotoAvisos').classList.add('d-none');
+    try {
+      const d = await api('/api/compras/leer-foto', { method: 'POST', body: JSON.stringify({ imagen: await reducir(f) }) });
+      if (d.proveedor_id) $('cProv').value = d.proveedor_id;
+      if (d.ncf) $('cNcf').value = d.ncf;
+      if (d.fecha_comprobante) $('cFecha').value = d.fecha_comprobante;
+      $('cBienes').value = d.monto_bienes; $('cServ').value = d.monto_servicios; $('cItbis').value = d.itbis_facturado; $('cPropina').value = d.propina;
+      $('cForma').value = d.forma_pago;
+      $('fotoEstado').textContent = 'Datos leídos. Revísalos y guarda.';
+      if (d.avisos.length) { $('fotoAvisos').innerHTML = d.avisos.map((a) => `<div><i class="bi bi-exclamation-triangle"></i> ${esc(a)}</div>`).join(''); $('fotoAvisos').classList.remove('d-none'); }
+    } catch (err) { $('fotoEstado').textContent = 'No se pudo leer la foto.'; falla(err); }
+    finally { $('btnFoto').disabled = false; $('cFoto').value = ''; }
   });
 
   $('formCompra').addEventListener('submit', async (e) => {

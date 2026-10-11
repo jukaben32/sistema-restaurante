@@ -2,6 +2,7 @@
 // Relacionado con: services/fiscal/compras.js, services/fiscal/reportes.js, views/compras.ejs, public/js/compras.js
 const express = require('express');
 const compras = require('../services/fiscal/compras');
+const lector = require('../services/fiscal/lectorFactura');
 const db = require('../db');
 
 const router = express.Router();
@@ -24,6 +25,10 @@ router.get('/api/compras/catalogos', ah(async (req, res) => {
 router.get('/api/compras/proveedores', ah(async (req, res) => { res.json(await compras.listarProveedores()); }, 'No se pudieron leer los proveedores'));
 router.post('/api/compras/proveedores', ah(async (req, res) => { res.status(201).json(await compras.guardarProveedor(req.body || {})); }, 'No se pudo guardar el proveedor'));
 router.put('/api/compras/proveedores/:id(\\d+)', ah(async (req, res) => { res.json(await compras.guardarProveedor({ ...(req.body || {}), id: Number(req.params.id) })); }, 'No se pudo guardar el proveedor'));
+
+router.post('/api/compras/leer-foto', ah(async (req, res) => {
+    res.json(await lector.leerFactura(req.body && req.body.imagen, { proveedores: await compras.listarProveedores() }));
+}, 'No se pudo leer la factura'));
 
 router.get('/api/compras', ah(async (req, res) => {
     const mes = /^\d{4}-\d{2}$/.test(String(req.query.mes || '')) ? String(req.query.mes) : null;

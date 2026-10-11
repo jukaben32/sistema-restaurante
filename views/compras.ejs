@@ -88,6 +88,12 @@
             <form class="modal-content" id="formCompra" autocomplete="off">
                 <div class="modal-header"><h5 class="modal-title">Nueva compra o gasto</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
                 <div class="modal-body">
+                    <div class="rm-card p-2 mb-2 d-flex align-items-center gap-2 flex-wrap">
+                        <input type="file" id="cFoto" accept="image/*" capture="environment" hidden>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnFoto"><i class="bi bi-camera"></i> Leer factura con foto</button>
+                        <span class="small text-muted" id="fotoEstado">Toma una foto y se llenan los datos. Revísalos antes de guardar.</span>
+                    </div>
+                    <div id="fotoAvisos" class="alert alert-warning small py-2 d-none"></div>
                     <div class="row g-2">
                         <div class="col-md-6"><label class="form-label small" for="cProv">Proveedor</label>
                             <select id="cProv" class="form-select" required></select></div>
