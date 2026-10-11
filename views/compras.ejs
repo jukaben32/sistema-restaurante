@@ -91,7 +91,9 @@
                     <div class="rm-card p-2 mb-2 d-flex align-items-center gap-2 flex-wrap">
                         <input type="file" id="cFoto" accept="image/*" capture="environment" hidden>
                         <button type="button" class="btn btn-outline-secondary btn-sm" id="btnFoto"><i class="bi bi-camera"></i> Leer factura con foto</button>
-                        <span class="small text-muted" id="fotoEstado">Toma una foto y se llenan los datos. Revísalos antes de guardar.</span>
+                        <input type="file" id="cAdj" accept="image/*" hidden>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnAdjuntar" title="Archivar la foto sin leerla"><i class="bi bi-paperclip"></i> Adjuntar sin leer</button>
+                        <span class="small text-muted" id="fotoEstado">Toma una foto y se llenan los datos. Revísalos antes de guardar. La foto se archiva con la compra.</span>
                     </div>
                     <img id="fotoVista" class="d-none mb-2 rounded border" style="max-height:140px;max-width:100%" alt="Foto enviada para leer">
                     <div id="fotoAvisos"class="alert alert-warning small py-2 d-none"></div>

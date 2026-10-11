@@ -98,6 +98,7 @@ async function crearCompra(b, usuario = null) {
                 await conn.commit();
             } catch (x) { await conn.rollback().catch(() => {}); throw x; } finally { conn.release(); }
         }
+        await guardarAdjunto(r.insertId, b.adjunto, usuario);
         return { id: r.insertId };
     } catch (e) {
         if (e && (e.code === '23505' || e.code === 'ER_DUP_ENTRY')) throw err('Esa factura de compra ya está registrada para ese proveedor.');
@@ -105,9 +106,25 @@ async function crearCompra(b, usuario = null) {
     }
 }
 
+// Foto de la factura (data URL JPEG/PNG/WEBP, máx. ~2 MB) archivada como soporte de la compra. Si falla no impide guardar la compra.
+async function guardarAdjunto(compraId, dataUrl, usuario) {
+    const m = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || ''));
+    if (!m) return;
+    const datos = Buffer.from(m[2], 'base64');
+    if (!datos.length || datos.length > 2 * 1024 * 1024) return;
+    try { await db.query('INSERT INTO compras_adjuntos (compra_id, mime, tamano, datos, usuario) VALUES (?, ?, ?, ?, ?)', [compraId, m[1], datos.length, datos, usuario]); }
+    catch (e) { console.error('No se pudo archivar la foto de la compra', compraId, e.message); }
+}
+
+async function obtenerAdjunto(compraId) {
+    const [rows] = await db.query('SELECT mime, datos FROM compras_adjuntos WHERE compra_id = ? ORDER BY id DESC LIMIT 1', [compraId]);
+    return rows[0] || null;
+}
+
 async function listarCompras(mes) {
     const [rows] = await db.query(
-        `SELECT c.*, p.nombre AS proveedor, p.documento, p.tipo_documento
+        `SELECT c.*, p.nombre AS proveedor, p.documento, p.tipo_documento,
+                EXISTS (SELECT 1 FROM compras_adjuntos a WHERE a.compra_id = c.id) AS tiene_foto
          FROM compras c JOIN proveedores p ON p.id = c.proveedor_id
          WHERE (?::text IS NULL OR to_char(c.fecha_comprobante, 'YYYY-MM') = ?) ORDER BY c.fecha_comprobante DESC, c.id DESC LIMIT 500`, [mes || null, mes || null]
     );
@@ -119,4 +136,4 @@ async function eliminarCompra(id) {
     if (!r.affectedRows) throw err('Compra no encontrada');
 }
 
-module.exports = { TIPOS_BIENES, FORMAS_PAGO, listarProveedores, guardarProveedor, crearCompra, listarCompras, eliminarCompra };
+module.exports = { obtenerAdjunto, TIPOS_BIENES, FORMAS_PAGO, listarProveedores, guardarProveedor, crearCompra, listarCompras, eliminarCompra };

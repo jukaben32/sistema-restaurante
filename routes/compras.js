@@ -30,6 +30,13 @@ router.post('/api/compras/leer-foto', ah(async (req, res) => {
     res.json(await lector.leerFactura(req.body && req.body.imagen, { proveedores: await compras.listarProveedores() }));
 }, 'No se pudo leer la factura'));
 
+router.get('/api/compras/:id(\\d+)/foto', ah(async (req, res) => {
+    const a = await compras.obtenerAdjunto(Number(req.params.id));
+    if (!a) return res.status(404).json({ error: 'Esta compra no tiene foto archivada' });
+    res.set({ 'Content-Type': a.mime, 'Cache-Control': 'private, max-age=3600' });
+    res.send(a.datos);
+}, 'No se pudo leer la foto'));
+
 router.get('/api/compras', ah(async (req, res) => {
     const mes = /^\d{4}-\d{2}$/.test(String(req.query.mes || '')) ? String(req.query.mes) : null;
     res.json({ compras: await compras.listarCompras(mes) });

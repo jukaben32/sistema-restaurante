@@ -6,6 +6,7 @@
   const rd = (n) => `RD$\u00a0${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const modalProv = new bootstrap.Modal($('modalProv'));
   const modalCompra = new bootstrap.Modal($('modalCompra'));
+  let fotoActual = null; // foto de la factura que se archivará al guardar la compra
   let cat = { tipos: {}, formas: {}, proveedores: [], insumos: [] };
 
   async function api(url, opts = {}) {
@@ -35,7 +36,7 @@
         <td><code>${esc(c.ncf)}</code>${c.ncf_modificado ? `<div class="small text-muted">modifica ${esc(c.ncf_modificado)}</div>` : ''}</td>
         <td class="small">${esc(cat.tipos[c.tipo_bienes_servicios] || c.tipo_bienes_servicios)}</td>
         <td class="num text-end">${rd(monto)}</td><td class="num text-end">${rd(c.itbis_facturado)}</td>
-        <td class="text-end"><button class="btn btn-sm btn-outline-danger" data-borrar="${c.id}" title="Borrar"><i class="bi bi-trash"></i></button></td></tr>`;
+        <td class="text-end text-nowrap">${c.tiene_foto ? `<a class="btn btn-sm btn-outline-secondary me-1" href="/api/compras/${c.id}/foto" target="_blank" rel="noopener" title="Ver foto de la factura"><i class="bi bi-image"></i></a>` : ''}<button class="btn btn-sm btn-outline-danger" data-borrar="${c.id}" title="Borrar"><i class="bi bi-trash"></i></button></td></tr>`;
     }).join('');
     $('tfCompras').innerHTML = `<tr class="fw-bold"><td colspan="4" class="text-end">Total del mes</td><td class="num text-end">${rd(total)}</td><td class="num text-end">${rd(itbis)}</td><td></td></tr>`;
   }
@@ -103,6 +104,7 @@
     $('entradas').innerHTML = '';
     $('fotoAvisos').classList.add('d-none');
     $('fotoVista').classList.add('d-none');
+    fotoActual = null;
     $('fotoEstado').textContent = 'Toma una foto y se llenan los datos. Revísalos antes de guardar.';
     $('cFecha').value = new Date().toISOString().slice(0, 10);
     $('cTipo').innerHTML = Object.entries(cat.tipos).sort().map(([k, v]) => `<option value="${k}" ${k === '09' ? 'selected' : ''}>${k} · ${esc(v)}</option>`).join('');
@@ -130,7 +132,7 @@
     bmp.close();
     // Mantiene la foto bajo ~1.5 MB (límite de Vercel: 4.5 MB por solicitud)
     let q = 0.9, url = c.toDataURL('image/jpeg', q);
-    while (url.length > 2 * 1024 * 1024 && q > 0.5) { q -= 0.1; url = c.toDataURL('image/jpeg', q); }
+    while (url.length > 1.3 * 1024 * 1024 && q > 0.5) { q -= 0.1; url = c.toDataURL('image/jpeg', q); }
     return url;
   }
   $('btnFoto').addEventListener('click', () => $('cFoto').click());
@@ -143,6 +145,7 @@
     $('fotoAvisos').classList.add('d-none');
     try {
       const imagen = await reducir(f);
+      fotoActual = imagen;
       $('fotoVista').src = imagen; $('fotoVista').classList.remove('d-none');
       const d = await api('/api/compras/leer-foto', { method: 'POST', body: JSON.stringify({ imagen }) });
       if (d.proveedor_id) $('cProv').value = d.proveedor_id;
@@ -170,6 +173,19 @@
     finally { $('btnFoto').disabled = false; $('cFoto').value = ''; }
   });
 
+  // Adjuntar la foto solo para archivarla (sin leerla)
+  $('btnAdjuntar').addEventListener('click', () => $('cAdj').click());
+  $('cAdj').addEventListener('change', async () => {
+    const f = $('cAdj').files[0];
+    if (!f) return;
+    try {
+      fotoActual = await reducir(f);
+      $('fotoVista').src = fotoActual; $('fotoVista').classList.remove('d-none');
+      $('fotoEstado').textContent = 'Foto adjunta: se archivará al guardar la compra.';
+    } catch (err) { falla(err, 'No se pudo adjuntar la foto'); }
+    finally { $('cAdj').value = ''; }
+  });
+
   $('formCompra').addEventListener('submit', async (e) => {
     e.preventDefault();
     const entradas = [...document.querySelectorAll('.entrada-fila')].map((f) => ({ insumo_id: f.querySelector('.e-insumo').value, cantidad: f.querySelector('.e-cant').value, unidad: (f.querySelector('.e-insumo').selectedOptions[0] || {}).dataset?.u }))
@@ -179,7 +195,7 @@
       fecha_comprobante: $('cFecha').value, fecha_pago: $('cFechaPago').value || null, forma_pago: $('cForma').value, tipo_bienes_servicios: $('cTipo').value,
       monto_bienes: $('cBienes').value, monto_servicios: $('cServ').value, itbis_facturado: $('cItbis').value, itbis_costo: $('cItbisCosto').value,
       propina: $('cPropina').value, itbis_retenido: $('cItbisRet').value, monto_retencion_renta: $('cRetRenta').value, tipo_retencion_isr: $('cTipoRet').value || null,
-      nota: $('cNota').value, entradas
+      nota: $('cNota').value, entradas, adjunto: fotoActual
     };
     try {
       await api('/api/compras', { method: 'POST', body: JSON.stringify(body) });
