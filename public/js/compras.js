@@ -11,10 +11,10 @@
   async function api(url, opts = {}) {
     const r = await fetch(url, { ...opts, headers: { 'Content-Type': 'application/json', Accept: 'application/json' } });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.error || 'Error');
+    if (!r.ok) throw new Error(d.error || (r.status === 413 ? 'La foto pesa demasiado. Intenta de nuevo.' : `Error del servidor (${r.status})`));
     return d;
   }
-  const falla = (e) => Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: e.message || String(e), confirmButtonText: 'Entendido' });
+  const falla = (e, titulo = 'No se pudo guardar') => Swal.fire({ icon: 'error', title: titulo, text: e.message || String(e), confirmButtonText: 'Entendido' });
 
   // ---------------------------------------------------------------- compras
   async function cargarCompras() {
@@ -128,7 +128,10 @@
     ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
     ctx.drawImage(bmp, 0, 0);
     bmp.close();
-    return c.toDataURL('image/jpeg', 0.9);
+    // Mantiene la foto bajo ~1.5 MB (límite de Vercel: 4.5 MB por solicitud)
+    let q = 0.9, url = c.toDataURL('image/jpeg', q);
+    while (url.length > 2 * 1024 * 1024 && q > 0.5) { q -= 0.1; url = c.toDataURL('image/jpeg', q); }
+    return url;
   }
   $('btnFoto').addEventListener('click', () => $('cFoto').click());
   $('cFoto').addEventListener('change', async () => {
@@ -150,7 +153,7 @@
       $('fotoEstado').innerHTML = `Datos leídos. Revísalos y guarda. <a href="#" id="verCrudo">Ver lectura</a><pre id="crudo" class="d-none small mb-0">${esc(JSON.stringify(d.crudo, null, 1))}</pre>`;
       $('verCrudo').addEventListener('click', (e) => { e.preventDefault(); $('crudo').classList.toggle('d-none'); });
       if (d.avisos.length) { $('fotoAvisos').innerHTML = d.avisos.map((a) => `<div><i class="bi bi-exclamation-triangle"></i> ${esc(a)}</div>`).join(''); $('fotoAvisos').classList.remove('d-none'); }
-    } catch (err) { $('fotoEstado').textContent = 'No se pudo leer la foto.'; falla(err); }
+    } catch (err) { $('fotoEstado').textContent = 'No se pudo leer la foto.'; falla(err, 'No se pudo leer la factura'); }
     finally { $('btnFoto').disabled = false; $('cFoto').value = ''; }
   });
 
