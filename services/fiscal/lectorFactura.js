@@ -10,7 +10,7 @@ const PROMPT = `Eres un asistente contable de República Dominicana. Lee la fact
 {"rnc_proveedor": "solo dígitos o null", "nombre_proveedor": "texto o null", "ncf": "NCF (B01...) o e-NCF (E31...), sin espacios, o null",
  "fecha": "YYYY-MM-DD o null", "monto_bienes": número sin ITBIS, "monto_servicios": número sin ITBIS, "itbis": número, "propina": número,
  "total": número total de la factura, "forma_pago": "efectivo" | "transferencia" | "tarjeta" | "credito" | null, "confianza": número 0 a 1}
-Reglas: las fechas en República Dominicana se escriben DD/MM/AAAA (día primero); no inventes datos; si no se lee, usa null (o 0 en montos). Montos como números con punto decimal. "monto_bienes" y "monto_servicios" son el subtotal antes de ITBIS: si no puedes distinguirlos, pon todo en bienes. La propina legal (10%) no es parte del subtotal.`;
+Reglas: copia el NCF carácter por carácter sin omitir ceros ni dígitos (NCF = letra B + 10 dígitos = 11 caracteres; e-NCF = letra E + 12 dígitos = 13 caracteres); el RNC tiene 9 dígitos (o 11 si es cédula); las fechas en República Dominicana se escriben DD/MM/AAAA (día primero); no inventes datos; si no se lee, usa null (o 0 en montos). Montos como números con punto decimal. "monto_bienes" y "monto_servicios" son el subtotal antes de ITBIS: si no puedes distinguirlos, pon todo en bienes. La propina legal (10%) no es parte del subtotal.`;
 
 const FORMAS = { efectivo: '01', transferencia: '02', tarjeta: '03', credito: '04' };
 const num = (v) => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? calculo.round2(n) : 0; };
