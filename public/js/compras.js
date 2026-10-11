@@ -139,6 +139,7 @@
     if (!f) return;
     $('btnFoto').disabled = true;
     $('fotoEstado').textContent = 'Leyendo la factura…';
+    $('fotoAvisos').innerHTML = '';
     $('fotoAvisos').classList.add('d-none');
     try {
       const imagen = await reducir(f);
@@ -153,6 +154,18 @@
       $('fotoEstado').innerHTML = `Datos leídos. Revísalos y guarda. <a href="#" id="verCrudo">Ver lectura</a><pre id="crudo" class="d-none small mb-0">${esc(JSON.stringify(d.crudo, null, 1))}</pre>`;
       $('verCrudo').addEventListener('click', (e) => { e.preventDefault(); $('crudo').classList.toggle('d-none'); });
       if (d.avisos.length) { $('fotoAvisos').innerHTML = d.avisos.map((a) => `<div><i class="bi bi-exclamation-triangle"></i> ${esc(a)}</div>`).join(''); $('fotoAvisos').classList.remove('d-none'); }
+      if (!d.proveedor_id && d.rnc_valido) {
+        $('fotoAvisos').classList.remove('d-none');
+        $('fotoAvisos').insertAdjacentHTML('beforeend', `<button type="button" class="btn btn-sm btn-rm mt-1" id="btnCrearProv"><i class="bi bi-person-plus"></i> Crear proveedor ${esc(d.nombre_proveedor || d.rnc_proveedor)} (${esc(d.rnc_proveedor)})</button>`);
+        $('btnCrearProv').addEventListener('click', async () => {
+          try {
+            const r = await api('/api/compras/proveedores', { method: 'POST', body: JSON.stringify({ nombre: d.nombre_proveedor || `Proveedor ${d.rnc_proveedor}`, documento: d.rnc_proveedor }) });
+            await recargarCatalogos();
+            $('cProv').value = r.id;
+            $('btnCrearProv').outerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> Proveedor creado y seleccionado</span>';
+          } catch (err) { falla(err, 'No se pudo crear el proveedor'); }
+        });
+      }
     } catch (err) { $('fotoEstado').textContent = 'No se pudo leer la foto.'; falla(err, 'No se pudo leer la factura'); }
     finally { $('btnFoto').disabled = false; $('cFoto').value = ''; }
   });
