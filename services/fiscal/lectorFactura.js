@@ -41,7 +41,9 @@ async function leerFactura(dataUrl, { proveedores = [] } = {}) {
     const d = await r.json();
     const j = extraerJSON(d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content);
 
+    console.log('lector factura: imagen', Math.round(dataUrl.length / 1024), 'KB, respuesta', JSON.stringify(j).slice(0, 400));
     const avisos = [];
+    if (!j.ncf && !j.fecha && !(num(j.total) > 0)) throw err('No se pudo leer ningún dato de la foto. Mira la vista previa: si sale oscura, borrosa o cortada, toma otra con buena luz y la hoja completa dentro del cuadro.');
     const rnc = String(j.rnc_proveedor || '').replace(/\D/g, '');
     const ncf = String(j.ncf || '').replace(/\s|-/g, '').toUpperCase() || null;
     const fecha = /^\d{4}-\d{2}-\d{2}$/.test(String(j.fecha || '')) ? j.fecha : null;

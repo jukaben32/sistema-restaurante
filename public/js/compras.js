@@ -102,6 +102,7 @@
     $('formCompra').reset();
     $('entradas').innerHTML = '';
     $('fotoAvisos').classList.add('d-none');
+    $('fotoVista').classList.add('d-none');
     $('fotoEstado').textContent = 'Toma una foto y se llenan los datos. Revísalos antes de guardar.';
     $('cFecha').value = new Date().toISOString().slice(0, 10);
     $('cTipo').innerHTML = Object.entries(cat.tipos).sort().map(([k, v]) => `<option value="${k}" ${k === '09' ? 'selected' : ''}>${k} · ${esc(v)}</option>`).join('');
@@ -110,20 +111,24 @@
   });
 
   // Reduce la foto a ~1600 px JPEG para que suba rápido y quepa en el límite del servidor
-  function reducir(file) {
-    return new Promise((ok, mal) => {
-      const img = new Image();
-      img.onload = () => {
-        const k = Math.min(1, 1600 / Math.max(img.width, img.height));
-        const c = document.createElement('canvas');
-        c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
-        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-        URL.revokeObjectURL(img.src);
-        ok(c.toDataURL('image/jpeg', 0.85));
-      };
-      img.onerror = () => mal(new Error('No se pudo abrir la imagen.'));
-      img.src = URL.createObjectURL(file);
-    });
+  // createImageBitmap redimensiona al decodificar (no carga la foto completa en memoria): evita imágenes en blanco en celulares con fotos grandes
+  async function reducir(file) {
+    const MAX = 2000;
+    let bmp;
+    try {
+      const probe = await createImageBitmap(file, { imageOrientation: 'from-image' });
+      const k = Math.min(1, MAX / Math.max(probe.width, probe.height));
+      const w = Math.round(probe.width * k), h = Math.round(probe.height * k);
+      probe.close();
+      bmp = await createImageBitmap(file, { imageOrientation: 'from-image', resizeWidth: w, resizeHeight: h, resizeQuality: 'high' });
+    } catch (_) { throw new Error('No se pudo abrir la imagen. Prueba con otra foto.'); }
+    const c = document.createElement('canvas');
+    c.width = bmp.width; c.height = bmp.height;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(bmp, 0, 0);
+    bmp.close();
+    return c.toDataURL('image/jpeg', 0.9);
   }
   $('btnFoto').addEventListener('click', () => $('cFoto').click());
   $('cFoto').addEventListener('change', async () => {
@@ -133,7 +138,9 @@
     $('fotoEstado').textContent = 'Leyendo la factura…';
     $('fotoAvisos').classList.add('d-none');
     try {
-      const d = await api('/api/compras/leer-foto', { method: 'POST', body: JSON.stringify({ imagen: await reducir(f) }) });
+      const imagen = await reducir(f);
+      $('fotoVista').src = imagen; $('fotoVista').classList.remove('d-none');
+      const d = await api('/api/compras/leer-foto', { method: 'POST', body: JSON.stringify({ imagen }) });
       if (d.proveedor_id) $('cProv').value = d.proveedor_id;
       if (d.ncf) $('cNcf').value = d.ncf;
       if (d.fecha_comprobante) $('cFecha').value = d.fecha_comprobante;
